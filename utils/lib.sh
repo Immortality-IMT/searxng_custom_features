@@ -960,7 +960,7 @@ nginx_distro_setup() {
     NGINX_APPS_AVAILABLE="/etc/nginx/default.apps-available"
 
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             NGINX_PACKAGES="nginx"
             NGINX_DEFAULT_SERVER=/etc/nginx/sites-available/default
             ;;
@@ -1115,7 +1115,7 @@ nginx_disable_app() {
 apache_distro_setup() {
     # shellcheck disable=SC2034
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             # debian uses the /etc/apache2 path, while other distros use
             # the apache default at /etc/httpd
             APACHE_SITES_AVAILABLE="/etc/apache2/sites-available"
@@ -1157,7 +1157,7 @@ install_apache() {
 
 apache_is_installed() {
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*) (command -v apachectl) &>/dev/null ;;
+        ubuntu-* | debian-*|linuxmint-*) (command -v apachectl) &>/dev/null ;;
         arch-*) (command -v httpd) &>/dev/null ;;
         fedora-* | centos-7) (command -v httpd) &>/dev/null ;;
     esac
@@ -1168,7 +1168,7 @@ apache_reload() {
     info_msg "reload apache .."
     echo
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             sudo -H apachectl configtest
             sudo -H systemctl force-reload apache2
             ;;
@@ -1220,7 +1220,7 @@ apache_enable_site() {
     info_msg "enable apache site: ${CONF}"
 
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             sudo -H a2ensite -q "${CONF}"
             ;;
         arch-*)
@@ -1246,7 +1246,7 @@ apache_disable_site() {
     info_msg "disable apache site: ${CONF}"
 
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             sudo -H a2dissite -q "${CONF}"
             ;;
         arch-*)
@@ -1269,7 +1269,7 @@ uWSGI_SETUP="${uWSGI_SETUP:=/etc/uwsgi}"
 
 uWSGI_distro_setup() {
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             # init.d --> /usr/share/doc/uwsgi/README.Debian.gz
             # For uWSGI debian uses the LSB init process, this might be changed
             # one day, see https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=833067
@@ -1324,7 +1324,7 @@ uWSGI_restart() {
     [[ -z $CONF ]] && die_caller 42 "missing argument <myapp.ini>"
     info_msg "restart uWSGI service"
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             # the 'service' method seems broken in that way, that it (re-)starts
             # the whole uwsgi process.
             service uwsgi restart "${CONF%.*}"
@@ -1407,7 +1407,7 @@ uWSGI_app_enabled() {
 
     [[ -z $CONF ]] && die_caller 42 "missing argument <myapp.ini>"
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             [[ -f "${uWSGI_APPS_ENABLED}/${CONF}" ]]
             exit_val=$?
             ;;
@@ -1437,7 +1437,7 @@ uWSGI_enable_app() {
 
     [[ -z $CONF ]] && die_caller 42 "missing argument <myapp.ini>"
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             mkdir -p "${uWSGI_APPS_ENABLED}"
             rm -f "${uWSGI_APPS_ENABLED}/${CONF}"
             ln -s "${uWSGI_APPS_AVAILABLE}/${CONF}" "${uWSGI_APPS_ENABLED}/${CONF}"
@@ -1471,7 +1471,7 @@ uWSGI_disable_app() {
 
     [[ -z $CONF ]] && die_caller 42 "missing argument <myapp.ini>"
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             service uwsgi stop "${CONF%.*}"
             rm -f "${uWSGI_APPS_ENABLED}/${CONF}"
             info_msg "disabled uWSGI app: ${CONF} (restart uWSGI required)"

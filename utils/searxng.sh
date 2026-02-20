@@ -94,7 +94,7 @@ case $DIST_ID-$DIST_VERS in
         SEARXNG_BUILD_PACKAGES="${SEARXNG_BUILD_PACKAGES_debian}"
         APACHE_PACKAGES="$APACHE_PACKAGES libapache2-mod-proxy-uwsgi"
         ;;
-    ubuntu-* | debian-*)
+    ubuntu-* | debian-*|linuxmint-*)
         SEARXNG_PACKAGES="${SEARXNG_PACKAGES_debian} python-is-python3"
         SEARXNG_BUILD_PACKAGES="${SEARXNG_BUILD_PACKAGES_debian}"
         ;;
@@ -829,7 +829,7 @@ searxng.instance.inspect() {
     echo
 
     case $DIST_ID-$DIST_VERS in
-        ubuntu-* | debian-*)
+        ubuntu-* | debian-*|linuxmint-*)
             # For uWSGI debian uses the LSB init process; for each configuration
             # file new uWSGI daemon instance is started with additional option.
             service uwsgi status "${SERVICE_NAME}"
@@ -849,7 +849,7 @@ searxng.instance.inspect() {
     while true; do
         trap break 2
         case $DIST_ID-$DIST_VERS in
-            ubuntu-* | debian-*) tail -f "/var/log/uwsgi/app/${SERVICE_NAME%.*}.log" ;;
+            ubuntu-* | debian-*|linuxmint-*) tail -f "/var/log/uwsgi/app/${SERVICE_NAME%.*}.log" ;;
             arch-*) journalctl -f -u "uwsgi@${SERVICE_NAME%.*}" ;;
             fedora-*) journalctl -f -u uwsgi ;;
         esac
@@ -915,7 +915,7 @@ searxng.doc.rst() {
             echo -e "\n.. START searxng uwsgi-description $DIST_NAME"
 
             case $DIST_ID-$DIST_VERS in
-                ubuntu-* | debian-*)
+                ubuntu-* | debian-*|linuxmint-*)
                     cat <<EOF
 
 .. code:: bash
