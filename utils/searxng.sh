@@ -488,13 +488,12 @@ EOF
     wait_key
     info_msg "install needed python packages"
     tee_stderr 0.1 <<EOF | sudo -H -u "${SERVICE_USER}" -i 2>&1 | prefix_stdout "$_service_prefix"
-pip install -U pip
-pip install -U setuptools
-pip install -U wheel
-pip install -U pyyaml
-pip install -U msgspec
-pip install -U typing-extensions
-pip install -U pybind11
+
+source "${SEARXNG_PYENV}/bin/activate"
+
+# Install all required dependencies
+pip install -U pip setuptools wheel pyyaml msgspec typing_extensions "numpy<2.0" httpx pygments whitenoise flask flask-babel markdown-it-py httpx-socks tomli valkey lxml python-dateutil typer isodate h2 fasttext
+
 cd ${SEARXNG_SRC}
 pip install --use-pep517 --no-build-isolation -e .
 EOF
