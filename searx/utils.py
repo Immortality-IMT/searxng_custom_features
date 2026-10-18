@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Utility functions for the engines"""
 
+from hashlib import pbkdf2_hmac
 
 import re
 import importlib
@@ -25,15 +26,10 @@ from lxml.etree import XPath, XPathError, XPathSyntaxError
 from lxml.etree import ElementBase, _Element  # pyright: ignore[reportPrivateUsage]
 
 from searx import settings
-from searx.data import USER_AGENTS, data_dir, gsa_useragents_loader
+from searx.data import USER_AGENTS
 from searx.version import VERSION_TAG
-from searx.sxng_locales import sxng_locales
 from searx.exceptions import SearxXPathSyntaxException, SearxEngineXPathException
 from searx import logger
-
-if t.TYPE_CHECKING:
-    import fasttext.FastText  # type: ignore
-
 
 logger = logger.getChild('utils')
 
@@ -61,12 +57,6 @@ _JSON_PASSTHROUGH_ESCAPES = R'"\bfnrtu'
 _XPATH_CACHE: dict[str, XPath] = {}
 _LANG_TO_LC_CACHE: dict[str, dict[str, str]] = {}
 
-_FASTTEXT_MODEL: "fasttext.FastText._FastText | None" = None  # pyright: ignore[reportPrivateUsage]
-"""fasttext model to predict language of a search term"""
-
-SEARCH_LANGUAGE_CODES = frozenset([searxng_locale[0].split('-')[0] for searxng_locale in sxng_locales])
-"""Languages supported by most searxng engines (:py:obj:`searx.sxng_locales.sxng_locales`)."""
-
 
 class _NotSetClass:  # pylint: disable=too-few-public-methods
     """Internal class for this module, do not create instance of this class.
@@ -90,14 +80,6 @@ def gen_useragent(os_string: str | None = None) -> str:
         os=os_string or choice(USER_AGENTS['os']),
         version=choice(USER_AGENTS['versions']),
     )
-
-
-def gen_gsa_useragent() -> str:
-    """Return a random GSA User Agent suitable for Google
-
-    See searx/data/gsa_useragents.txt
-    """
-    return choice(gsa_useragents_loader())
 
 
 class HTMLTextExtractor(HTMLParser):
@@ -610,24 +592,24 @@ def eval_xpath_getindex(
     return default
 
 
-def _get_fasttext_model() -> "fasttext.FastText._FastText":  # pyright: ignore[reportPrivateUsage]
-    global _FASTTEXT_MODEL  # pylint: disable=global-statement
-    if _FASTTEXT_MODEL is None:
-        import fasttext  # pylint: disable=import-outside-toplevel
+def get_embedded_stream_url(url: str) -> str:
+    """Converts a standard video URL into its embed format.
 
-        # Monkey patch: prevent fasttext from showing a (useless) warning when loading a model.
-        fasttext.FastText.eprint = lambda x: None  # type: ignore
-        _FASTTEXT_MODEL = fasttext.load_model(str(data_dir / 'lid.176.ftz'))  # type: ignore
-    return _FASTTEXT_MODEL
+    Supported services include:
 
+    - Youtube
+    - Facebook
+    - Instagram
+    - TikTok
+    - Dailymotion
+    - Bilibili
 
-def get_embeded_stream_url(url: str):
-    """
-    Converts a standard video URL into its embed format. Supported services include Youtube,
-    Facebook, Instagram, TikTok, Dailymotion, and Bilibili.
+    The function is suitable for the field :obj:`MainResult.iframe_src
+    <searx.result_types.MainResult.iframe_src>`.  If ``url`` is not from one of
+    the supported services, an empty string is returned.
     """
     parsed_url = urlparse(url)
-    iframe_src = None
+    iframe_src = ""
 
     # YouTube
     if parsed_url.netloc in ['www.youtube.com', 'youtube.com'] and parsed_url.path == '/watch' and parsed_url.query:
@@ -681,77 +663,6 @@ def get_embeded_stream_url(url: str):
         )
 
     return iframe_src
-
-
-def detect_language(text: str, threshold: float = 0.3, only_search_languages: bool = False) -> str | None:
-    """Detect the language of the ``text`` parameter.
-
-    :param str text: The string whose language is to be detected.
-
-    :param float threshold: Threshold filters the returned labels by a threshold
-        on probability.  A choice of 0.3 will return labels with at least 0.3
-        probability.
-
-    :param bool only_search_languages: If ``True``, returns only supported
-        SearXNG search languages.  see :py:obj:`searx.languages`
-
-    :rtype: str, None
-    :returns:
-        The detected language code or ``None``. See below.
-
-    :raises ValueError: If ``text`` is not a string.
-
-    The language detection is done by using `a fork`_ of the fastText_ library
-    (`python fasttext`_). fastText_ distributes the `language identification
-    model`_, for reference:
-
-    - `FastText.zip: Compressing text classification models`_
-    - `Bag of Tricks for Efficient Text Classification`_
-
-    The `language identification model`_ support the language codes
-    (ISO-639-3)::
-
-        af als am an ar arz as ast av az azb ba bar bcl be bg bh bn bo bpy br bs
-        bxr ca cbk ce ceb ckb co cs cv cy da de diq dsb dty dv el eml en eo es
-        et eu fa fi fr frr fy ga gd gl gn gom gu gv he hi hif hr hsb ht hu hy ia
-        id ie ilo io is it ja jbo jv ka kk km kn ko krc ku kv kw ky la lb lez li
-        lmo lo lrc lt lv mai mg mhr min mk ml mn mr mrj ms mt mwl my myv mzn nah
-        nap nds ne new nl nn no oc or os pa pam pfl pl pms pnb ps pt qu rm ro ru
-        rue sa sah sc scn sco sd sh si sk sl so sq sr su sv sw ta te tg th tk tl
-        tr tt tyv ug uk ur uz vec vep vi vls vo wa war wuu xal xmf yi yo yue zh
-
-    By using ``only_search_languages=True`` the `language identification model`_
-    is harmonized with the SearXNG's language (locale) model.  General
-    conditions of SearXNG's locale model are:
-
-    a. SearXNG's locale of a query is passed to the
-       :py:obj:`searx.locales.get_engine_locale` to get a language and/or region
-       code that is used by an engine.
-
-    b. Most of SearXNG's engines do not support all the languages from `language
-       identification model`_ and there is also a discrepancy in the ISO-639-3
-       (fasttext) and ISO-639-2 (SearXNG)handling.  Further more, in SearXNG the
-       locales like ``zh-TH`` (``zh-CN``) are mapped to ``zh_Hant``
-       (``zh_Hans``) while the `language identification model`_ reduce both to
-       ``zh``.
-
-    .. _a fork: https://github.com/searxng/fasttext-predict
-    .. _fastText: https://fasttext.cc/
-    .. _python fasttext: https://pypi.org/project/fasttext/
-    .. _language identification model: https://fasttext.cc/docs/en/language-identification.html
-    .. _Bag of Tricks for Efficient Text Classification: https://arxiv.org/abs/1607.01759
-    .. _`FastText.zip: Compressing text classification models`: https://arxiv.org/abs/1612.03651
-
-    """
-    if not isinstance(text, str):
-        raise ValueError('text must a str')  # pyright: ignore[reportUnreachable]
-    r = _get_fasttext_model().predict(text.replace('\n', ' '), k=1, threshold=threshold)  # type: ignore
-    if isinstance(r, tuple) and len(r) == 2 and len(r[0]) > 0 and len(r[1]) > 0:  # type: ignore
-        language = r[0][0].split('__label__')[1]  # type: ignore
-        if only_search_languages and language not in SEARCH_LANGUAGE_CODES:
-            return None
-        return language  # type: ignore
-    return None
 
 
 def _j2p_process_escape(match: re.Match[str]) -> str:
@@ -835,13 +746,13 @@ def js_obj_str_to_json_str(js_obj_str: str) -> str:
             if in_string == "'":
                 p = p.replace('"', r'\"')
             parts[i] = p
-            # deal with the sequence blackslash then quote
-            # since js_obj_str splits on quote, we detect this case:
-            # * the previous part ends with a black slash
-            # * the current part is a single quote
-            # when detected the blackslash is removed on the previous part
+            # drop a trailing \ that was escaping the quote
+            # leave it if it has been escaped twice as a literal i.e. two \ and ' in a row
             if blackslash_just_before and p[:1] == "'":
-                parts[i - 1] = parts[i - 1][:-1]
+                prev = parts[i - 1]
+                num_backslashes = len(prev) - len(prev.rstrip("\\"))
+                if num_backslashes % 2 == 1:
+                    parts[i - 1] = prev[:-1]
 
         elif in_string is None and p in ('"', "'", "`"):
             # we are not in string but p is string delimiter
@@ -883,9 +794,10 @@ def js_obj_str_to_json_str(js_obj_str: str) -> str:
 
 
 def parse_duration_string(duration_str: str) -> timedelta | None:
-    """Parse a time string in format MM:SS or HH:MM:SS and convert it to a `timedelta` object.
+    """Parse a time string in format MM:SS or HH:MM:SS and convert it to a
+    :obj:`datetime.timedelta` object.
 
-    Returns None if the provided string doesn't match any of the formats.
+    Returns ``None`` if the provided string doesn't match any of the formats.
     """
     duration_str = duration_str.strip()
 
@@ -894,11 +806,42 @@ def parse_duration_string(duration_str: str) -> timedelta | None:
 
     try:
         # prepending ["00"] here inits hours to 0 if they are not provided
-        time_parts = (["00"] + duration_str.split(":"))[:3]
+        time_parts = (["00"] + duration_str.split(":"))[-3:]
         hours, minutes, seconds = map(int, time_parts)
         return timedelta(hours=hours, minutes=minutes, seconds=seconds)
 
     except (ValueError, TypeError):
         pass
+
+    return None
+
+
+def _array_startswith(arr: bytes, prefix: bytes) -> bool:
+    return arr[: len(prefix)] == prefix
+
+
+def solve_altcha(parameters: dict[str, t.Any], maxCounter: int = 1000) -> tuple[str, int] | None:
+    """Solves Altcha CAPTCHAs. It derives keys using PBKDF2 until the derived
+    key starts with the ``keyPrefix``` from the challenge. If the solver does not
+    finish after ``maxCounter`` iterations, returns ``None``."""
+
+    nonce = bytes.fromhex(parameters["nonce"])
+    salt = bytes.fromhex(parameters["salt"])
+    keyPrefix = bytes.fromhex(parameters["keyPrefix"])
+    cost = parameters["cost"]
+    keyLength = parameters["keyLength"]
+    # e.g. "PBKDF2/SHA-256" -> "sha256"
+    hashAlgorithm = parameters["algorithm"].split("/")[-1].replace("-", "").lower()
+
+    counter = 0
+    while counter < maxCounter:
+        # Appends the counter to the nonce, i.e. writes the counter as a big-endian 32-bit integer.
+        secret = nonce + counter.to_bytes(length=4)
+
+        key = pbkdf2_hmac(hash_name=hashAlgorithm, password=secret, salt=salt, iterations=cost, dklen=keyLength)
+        if _array_startswith(key, keyPrefix):
+            return key.hex(), counter
+
+        counter += 1
 
     return None

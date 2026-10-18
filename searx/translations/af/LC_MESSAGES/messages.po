@@ -16,16 +16,16 @@
 # jestie <jestie@users.noreply.translate.codeberg.org>, 2025.
 # APoniatowski <aponiatowski@users.noreply.translate.codeberg.org>, 2025.
 # French <french@noreply.codeberg.org>, 2025.
-# return42 <return42@noreply.codeberg.org>, 2025.
-# Raithlin <raithlin@noreply.codeberg.org>, 2025.
-# grumpyoldtechie <grumpyoldtechie@noreply.codeberg.org>, 2025.
+# return42 <return42@noreply.codeberg.org>, 2025, 2026.
+# Raithlin <raithlin@noreply.codeberg.org>, 2025, 2026.
+# grumpyoldtechie <grumpyoldtechie@noreply.codeberg.org>, 2025, 2026.
 msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-12-05 10:19+0000\n"
-"PO-Revision-Date: 2025-10-22 02:09+0000\n"
-"Last-Translator: return42 <return42@noreply.codeberg.org>\n"
+"POT-Creation-Date: 2026-10-04 05:47+0000\n"
+"PO-Revision-Date: 2026-10-01 19:27+0000\n"
+"Last-Translator: Raithlin <raithlin@noreply.codeberg.org>\n"
 "Language: af\n"
 "Language-Team: Afrikaans "
 "<https://translate.codeberg.org/projects/searxng/searxng/af/>\n"
@@ -33,7 +33,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.17.0\n"
+"Generated-By: Babel 2.18.0\n"
 
 #. CONSTANT_NAMES['NO_SUBGROUPING']
 #: searx/searxng.msg
@@ -45,6 +45,21 @@ msgstr "sonder verdere subgroepering"
 msgid "other"
 msgstr "ander"
 
+#. CATEGORY_NAMES['APPS']
+#: searx/searxng.msg
+msgid "apps"
+msgstr "toeps"
+
+#. CATEGORY_NAMES['BLOGS']
+#: searx/searxng.msg
+msgid "blogs"
+msgstr "blogs"
+
+#. CATEGORY_NAMES['DICTIONARIES']
+#: searx/searxng.msg
+msgid "dictionaries"
+msgstr "woordeboeke"
+
 #. CATEGORY_NAMES['FILES']
 #: searx/searxng.msg
 msgid "files"
@@ -55,105 +70,120 @@ msgstr "lêers"
 msgid "general"
 msgstr "algemeen"
 
-#. CATEGORY_NAMES['MUSIC']
+#. CATEGORY_NAMES['ICONS']
 #: searx/searxng.msg
-msgid "music"
-msgstr "musiek"
-
-#. CATEGORY_NAMES['SOCIAL_MEDIA']
-#: searx/searxng.msg
-msgid "social media"
-msgstr "sosiale media"
+msgid "icons"
+msgstr "ikone"
 
 #. CATEGORY_NAMES['IMAGES']
 #: searx/searxng.msg
 msgid "images"
 msgstr "prente"
 
-#. CATEGORY_NAMES['VIDEOS']
-#: searx/searxng.msg
-msgid "videos"
-msgstr "videos"
-
-#. CATEGORY_NAMES['RADIO']
-#: searx/engines/radio_browser.py:142 searx/searxng.msg
-msgid "radio"
-msgstr "radio"
-
-#. CATEGORY_NAMES['TV']
-#: searx/searxng.msg
-msgid "tv"
-msgstr "tv"
-
 #. CATEGORY_NAMES['IT']
 #: searx/searxng.msg
 msgid "it"
 msgstr "inligtingstegnologie"
 
-#. CATEGORY_NAMES['NEWS']
+#. CATEGORY_NAMES['LYRICS']
 #: searx/searxng.msg
-msgid "news"
-msgstr "nuus"
+msgid "lyrics"
+msgstr "lirieke"
 
 #. CATEGORY_NAMES['MAP']
 #: searx/searxng.msg
 msgid "map"
 msgstr "kaart"
 
+#. CATEGORY_NAMES['MOVIES']
+#: searx/searxng.msg
+msgid "movies"
+msgstr "rolprente"
+
+#. CATEGORY_NAMES['MUSIC']
+#: searx/searxng.msg
+msgid "music"
+msgstr "musiek"
+
+#. CATEGORY_NAMES['NEWS']
+#: searx/searxng.msg
+msgid "news"
+msgstr "nuus"
+
 #. CATEGORY_NAMES['ONIONS']
 #: searx/searxng.msg
 msgid "onions"
 msgstr "uie"
+
+#. CATEGORY_NAMES['PACKAGES']
+#: searx/searxng.msg
+msgid "packages"
+msgstr "pakkette"
+
+#. CATEGORY_NAMES['Q_A']
+#: searx/searxng.msg
+msgid "q&a"
+msgstr "v&a"
+
+#. CATEGORY_NAMES['RADIO']
+#: searx/engines/radio_browser.py:160 searx/searxng.msg
+msgid "radio"
+msgstr "radio"
+
+#. CATEGORY_NAMES['REPOS']
+#: searx/searxng.msg
+msgid "repos"
+msgstr "bewaarplekke"
 
 #. CATEGORY_NAMES['SCIENCE']
 #: searx/searxng.msg
 msgid "science"
 msgstr "wetenskap"
 
-#. CATEGORY_GROUPS['APPS']
+#. CATEGORY_NAMES['SCIENTIFIC PUBLICATIONS']
 #: searx/searxng.msg
-msgid "apps"
-msgstr "toeps"
+msgid "scientific publications"
+msgstr "Wetenskaplike publikasies"
 
-#. CATEGORY_GROUPS['DICTIONARIES']
+#. CATEGORY_NAMES['SOCIAL_MEDIA']
 #: searx/searxng.msg
-msgid "dictionaries"
-msgstr "woordeboeke"
+msgid "social media"
+msgstr "sosiale media"
 
-#. CATEGORY_GROUPS['LYRICS']
-#: searx/searxng.msg
-msgid "lyrics"
-msgstr "lirieke"
-
-#. CATEGORY_GROUPS['PACKAGES']
-#: searx/searxng.msg
-msgid "packages"
-msgstr "pakkette"
-
-#. CATEGORY_GROUPS['Q_A']
-#: searx/searxng.msg
-msgid "q&a"
-msgstr "v&a"
-
-#. CATEGORY_GROUPS['REPOS']
-#: searx/searxng.msg
-msgid "repos"
-msgstr "bewaarplekke"
-
-#. CATEGORY_GROUPS['SOFTWARE_WIKIS']
+#. CATEGORY_NAMES['SOFTWARE_WIKIS']
 #: searx/searxng.msg
 msgid "software wikis"
 msgstr "sagteware wiki's"
 
-#. CATEGORY_GROUPS['WEB']
+#. CATEGORY_NAMES['STOCK_IMAGES']
+#: searx/searxng.msg
+msgid "stock images"
+msgstr "voorraadbeelde"
+
+#. CATEGORY_NAMES['TRANSLATE']
+#: searx/searxng.msg
+msgid "translate"
+msgstr "vertaal"
+
+#. CATEGORY_NAMES['TV']
+#: searx/searxng.msg
+msgid "tv"
+msgstr "tv"
+
+#. CATEGORY_NAMES['VIDEOS']
+#: searx/searxng.msg
+msgid "videos"
+msgstr "videos"
+
+#. CATEGORY_NAMES['WEATHER']
+#: searx/searxng.msg
+msgid "weather"
+msgstr "weer"
+
+#. CATEGORY_NAMES['WEB']
 #: searx/searxng.msg
 msgid "web"
 msgstr "web"
-
-#. CATEGORY_GROUPS['SCIENTIFIC PUBLICATIONS']
-#: searx/searxng.msg
-msgid "scientific publications"
-msgstr "Wetenskaplike publikasies"
 
 #. STYLE_NAMES['AUTO']
 #: searx/searxng.msg
@@ -181,7 +211,7 @@ msgid "Uptime"
 msgstr "bedryfstyd"
 
 #. BRAND_CUSTOM_LINKS['ABOUT']
-#: searx/searxng.msg searx/templates/simple/base.html:46
+#: searx/searxng.msg searx/templates/simple/base.html:50
 msgid "About"
 msgstr "Aangaande"
 
@@ -546,28 +576,28 @@ msgstr "toe"
 msgid "answered"
 msgstr "geantwoord"
 
-#: searx/webapp.py:328
+#: searx/webapp.py:326
 msgid "No item found"
 msgstr "Geen item gevind"
 
-#: searx/engines/qwant.py:299
-#: searx/templates/simple/result_templates/images.html:23 searx/webapp.py:330
+#: searx/engines/qwant.py:283
+#: searx/templates/simple/result_templates/images.html:62 searx/webapp.py:328
 msgid "Source"
 msgstr "Bron"
 
-#: searx/webapp.py:332
+#: searx/webapp.py:330
 msgid "Error loading the next page"
 msgstr "Fout met die laai van die volgende bladsy"
 
-#: searx/webapp.py:481 searx/webapp.py:882
+#: searx/webapp.py:478 searx/webapp.py:878
 msgid "Invalid settings, please edit your preferences"
 msgstr "Ongeldige opstellings, redigeer asb jou voorkeure"
 
-#: searx/webapp.py:497
+#: searx/webapp.py:494
 msgid "Invalid settings"
 msgstr "Ongeldige opstellings"
 
-#: searx/webapp.py:574 searx/webapp.py:664
+#: searx/webapp.py:570 searx/webapp.py:660
 msgid "search error"
 msgstr "soekfout"
 
@@ -595,44 +625,44 @@ msgstr "SSL vout: Kon nie sertifikaat verifieer nie"
 msgid "unexpected crash"
 msgstr "onverwagse breek"
 
-#: searx/webutils.py:49
+#: searx/webutils.py:48
 msgid "HTTP error"
 msgstr "HTTP fout"
 
-#: searx/webutils.py:50
+#: searx/webutils.py:49 searx/webutils.py:50
 msgid "HTTP connection error"
 msgstr "HTTP koppelingsfout"
 
-#: searx/webutils.py:56
+#: searx/webutils.py:54
 msgid "proxy error"
 msgstr "proksie fout"
 
-#: searx/webutils.py:57
+#: searx/webutils.py:56
 msgid "CAPTCHA"
 msgstr "CAPTCHA"
 
-#: searx/webutils.py:58
+#: searx/webutils.py:57
 msgid "too many requests"
 msgstr "te veel versoeke"
 
-#: searx/webutils.py:59
+#: searx/webutils.py:58
 msgid "access denied"
 msgstr "toegang geweier"
 
-#: searx/webutils.py:60
+#: searx/webutils.py:59
 msgid "server API error"
 msgstr "bediener API fout"
 
-#: searx/webutils.py:79
+#: searx/webutils.py:78
 msgid "Suspended"
 msgstr "Opgehef"
 
-#: searx/webutils.py:308
+#: searx/webutils.py:306
 #, python-brace-format
 msgid "{minutes} minute(s) ago"
 msgstr "{minutes} minute gelede"
 
-#: searx/webutils.py:309
+#: searx/webutils.py:307
 #, python-brace-format
 msgid "{hours} hour(s), {minutes} minute(s) ago"
 msgstr "{hours} ure, {minutes} minute gelede"
@@ -645,6 +675,11 @@ msgstr "Genereer verskillende ewekansige waardes"
 #, python-brace-format
 msgid "Compute {func} of the arguments"
 msgstr "Bereken {func} van die opsies"
+
+#: searx/engines/boardreader.py:108
+#, python-brace-format
+msgid "Posted by {author}"
+msgstr "Geplaas deur {author}"
 
 #: searx/engines/openstreetmap.py:156
 msgid "Show route in map .."
@@ -659,27 +694,23 @@ msgstr "{title} (UITGEDIEN)"
 msgid "This entry has been superseded by"
 msgstr "Hierdie inskrywing was vervang deur"
 
-#: searx/engines/qwant.py:301
+#: searx/engines/qwant.py:285
 msgid "Channel"
 msgstr "Kanaal"
 
-#: searx/engines/radio_browser.py:144
+#: searx/engines/radio_browser.py:162
 msgid "bitrate"
 msgstr "bitsnelheid"
 
-#: searx/engines/radio_browser.py:145
+#: searx/engines/radio_browser.py:163
 msgid "votes"
 msgstr "stemme"
 
-#: searx/engines/radio_browser.py:146
+#: searx/engines/radio_browser.py:164
 msgid "clicks"
 msgstr "klikke"
 
-#: searx/engines/seekr.py:193 searx/engines/zlibrary.py:78
-msgid "Language"
-msgstr "Taal"
-
-#: searx/engines/semantic_scholar.py:141
+#: searx/engines/semantic_scholar.py:140
 #, python-brace-format
 msgid ""
 "{numCitations} citations from the year {firstCitationVelocityYear} to "
@@ -712,10 +743,14 @@ msgid "The image could not be downloaded."
 msgstr "Die prent kon nie afgelaai word nie."
 
 #: searx/engines/zlibrary.py:79
+msgid "Language"
+msgstr "Taal"
+
+#: searx/engines/zlibrary.py:80
 msgid "Book rating"
 msgstr "boekgradering"
 
-#: searx/engines/zlibrary.py:80
+#: searx/engines/zlibrary.py:81
 msgid "File quality"
 msgstr "Lêer kwaliteit"
 
@@ -729,11 +764,11 @@ msgstr "Filter uit onion resultate wat op Ahmia se swartlys is."
 
 #: searx/plugins/calculator.py:25
 msgid "Calculator"
-msgstr ""
+msgstr "Sakrekenaar"
 
 #: searx/plugins/calculator.py:26
 msgid "Parses and solves mathematical expressions."
-msgstr ""
+msgstr "Ontleed en los wiskundige uitdrukkings op."
 
 #: searx/plugins/hash_plugin.py:33
 msgid "Hash plugin"
@@ -770,12 +805,15 @@ msgid ""
 "Automatically loads the next page when scrolling to bottom of the current"
 " page"
 msgstr ""
+"Laai die volgende bladsy outomaties wanneer na die onderkant van die "
+"huidige bladsy geblaai word"
 
-#: searx/plugins/oa_doi_rewrite.py:54
+#: searx/plugins/oa_doi_rewrite.py:55
 msgid "Open Access DOI rewrite"
 msgstr "oop toegang DOI oorskryf"
 
-#: searx/plugins/oa_doi_rewrite.py:55
+#: searx/plugins/oa_doi_rewrite.py:56
+#: searx/templates/simple/preferences/doi_resolver.html:15
 msgid ""
 "Avoid paywalls by redirecting to open-access versions of publications "
 "when available"
@@ -811,11 +849,11 @@ msgstr "Tydsone inset"
 msgid "Display the current time on different time zones."
 msgstr "Vertoon die huidige tyd in verskillende tydsones."
 
-#: searx/plugins/tor_check.py:41
+#: searx/plugins/tor_check.py:42
 msgid "Tor check plugin"
 msgstr "Tor toets inprop"
 
-#: searx/plugins/tor_check.py:43
+#: searx/plugins/tor_check.py:44
 msgid ""
 "This plugin checks if the address of the request is a Tor exit-node, and "
 "informs the user if it is; like check.torproject.org, but from SearXNG."
@@ -824,15 +862,15 @@ msgstr ""
 "uitgang nodus is en stel die gebruiker in kennis indien wel, soos "
 "check.torproject.org maar vanaf SearXNG."
 
-#: searx/plugins/tor_check.py:64
+#: searx/plugins/tor_check.py:65
 msgid "Could not download the list of Tor exit-nodes from"
 msgstr "Kon nie die lys van Tor uitgangnodes aflaai van"
 
-#: searx/plugins/tor_check.py:71
+#: searx/plugins/tor_check.py:72
 msgid "You are using Tor and it looks like you have the external IP address"
 msgstr "Jy gebruik Tor en dit lyk of hierdie jou eksterne IP addres is"
 
-#: searx/plugins/tor_check.py:75
+#: searx/plugins/tor_check.py:76
 msgid "You are not using Tor and you have the external IP address"
 msgstr "Jy gebruik nie Tor nie, en jou eksterne IP adres is"
 
@@ -844,15 +882,15 @@ msgstr "Spoorsnyer URL verwyderaar"
 msgid "Remove trackers arguments from the returned URL"
 msgstr "Verwyder spoorsnyersargumente van die teruggestuurde URL"
 
-#: searx/plugins/unit_converter.py:42
+#: searx/plugins/unit_converter.py:43
 msgid "Unit converter plugin"
 msgstr "Eenheidsomskakelaar-inprop"
 
-#: searx/plugins/unit_converter.py:43
+#: searx/plugins/unit_converter.py:44
 msgid "Convert between units"
 msgstr "Skakel tussen eenhede om"
 
-#: searx/result_types/answer.py:223
+#: searx/result_types/answer.py:224
 #, python-brace-format
 msgid "{location}: {temperature}, {condition}"
 msgstr "{location}: {temperature}, {condition}"
@@ -870,95 +908,71 @@ msgstr "Gaan na %(search_page)s."
 msgid "search page"
 msgstr "soekblad"
 
-#: searx/templates/simple/base.html:50
+#: searx/templates/simple/base.html:54
 msgid "Donate"
 msgstr "Skenk"
 
-#: searx/templates/simple/base.html:55 searx/templates/simple/base.html:57
-#: searx/templates/simple/preferences.html:156
+#: searx/templates/simple/base.html:59 searx/templates/simple/base.html:61
+#: searx/templates/simple/preferences.html:152
 msgid "Preferences"
 msgstr "Voorkeure"
 
-#: searx/templates/simple/base.html:68
+#: searx/templates/simple/base.html:72
 msgid "Powered by"
 msgstr "Aangedryf deur"
 
-#: searx/templates/simple/base.html:68
+#: searx/templates/simple/base.html:72
 msgid "a privacy-respecting, open metasearch engine"
 msgstr "'n oop metasoekenjin wat privaatheid respekteer"
 
-#: searx/templates/simple/base.html:69
+#: searx/templates/simple/base.html:73
 #: searx/templates/simple/result_templates/packages.html:59
 msgid "Source code"
 msgstr "Bronkode"
 
-#: searx/templates/simple/base.html:70
+#: searx/templates/simple/base.html:74
 msgid "Issue tracker"
 msgstr "Probleem soeker"
 
-#: searx/templates/simple/base.html:71 searx/templates/simple/stats.html:18
+#: searx/templates/simple/base.html:75 searx/templates/simple/stats.html:17
 msgid "Engine stats"
 msgstr "Enjin statistieke"
 
-#: searx/templates/simple/base.html:73
+#: searx/templates/simple/base.html:77
 msgid "Public instances"
 msgstr "Openbare instansies"
 
-#: searx/templates/simple/base.html:76
+#: searx/templates/simple/base.html:80
 msgid "Privacy policy"
 msgstr "Privaatheidsbeleid"
 
-#: searx/templates/simple/base.html:79
+#: searx/templates/simple/base.html:83
 msgid "Contact instance maintainer"
 msgstr "Kontak instansie onderhouer"
 
-#: searx/templates/simple/categories.html:30
+#: searx/templates/simple/categories.html:40
 msgid "Click on the magnifier to perform search"
 msgstr "Kliek op die vergrootglas om 'n soektog te doen"
 
-#: searx/templates/simple/macros.html:41
+#: searx/templates/simple/macros.html:52
 msgid "Length"
 msgstr "Lengte"
 
-#: searx/templates/simple/macros.html:42
+#: searx/templates/simple/macros.html:53
 #: searx/templates/simple/result_templates/paper.html:74
 msgid "Views"
 msgstr "sienings"
 
-#: searx/templates/simple/macros.html:43
+#: searx/templates/simple/macros.html:54
 #: searx/templates/simple/result_templates/file.html:18
-#: searx/templates/simple/result_templates/images.html:19
+#: searx/templates/simple/result_templates/images.html:52
 #: searx/templates/simple/result_templates/paper.html:14
 msgid "Author"
 msgstr "Outeur"
 
-#: searx/templates/simple/macros.html:51
+#: searx/templates/simple/macros.html:63
 msgid "cached"
 msgstr "gekas"
-
-#: searx/templates/simple/new_issue.html:64
-msgid "Start submitting a new issue on GitHub"
-msgstr "Begin om 'n nuwe probleem op GitHub in te dien"
-
-#: searx/templates/simple/new_issue.html:66
-msgid "Please check for existing bugs about this engine on GitHub"
-msgstr "Kyk asseblief vir bestaande goggas vir hierdie enjin op GitHub"
-
-#: searx/templates/simple/new_issue.html:69
-msgid "I confirm there is no existing bug about the issue I encounter"
-msgstr ""
-"Ek bevestig daar is nie 'n bestaande gogga oor die probleem wat ek teekom"
-" nie"
-
-#: searx/templates/simple/new_issue.html:71
-msgid "If this is a public instance, please specify the URL in the bug report"
-msgstr ""
-"As dit 'n publieke geval is, spesifiseer asseblief die URL in die "
-"foutverslag"
-
-#: searx/templates/simple/new_issue.html:72
-msgid "Submit a new issue on Github including the above information"
-msgstr "Dien 'n nuwe probleem in op GitHub insluitend die bogenoemde inligting"
 
 #: searx/templates/simple/preferences.html:65
 msgid "No HTTPS"
@@ -979,29 +993,25 @@ msgid "!bang for its categories"
 msgstr "!bang vir sy kategorieë"
 
 #: searx/templates/simple/preferences.html:102
-#: searx/templates/simple/stats.html:64
+#: searx/templates/simple/stats.html:63
 msgid "Median"
 msgstr "Mediaan"
 
 #: searx/templates/simple/preferences.html:103
-#: searx/templates/simple/stats.html:70
+#: searx/templates/simple/stats.html:69
 msgid "P80"
 msgstr "P80"
 
 #: searx/templates/simple/preferences.html:104
-#: searx/templates/simple/stats.html:76
+#: searx/templates/simple/stats.html:75
 msgid "P95"
 msgstr "P95"
 
-#: searx/templates/simple/preferences.html:136
-msgid "Failed checker test(s): "
-msgstr "Mislukte toetsertoets(e): "
-
-#: searx/templates/simple/preferences.html:138
+#: searx/templates/simple/preferences.html:134
 msgid "Errors:"
 msgstr "Foute:"
 
-#: searx/templates/simple/preferences.html:160
+#: searx/templates/simple/preferences.html:156
 msgid ""
 "This is a preview of the settings used by the 'Search URL' you used to "
 "get here."
@@ -1009,63 +1019,60 @@ msgstr ""
 "Hierdie is 'n voorskou van die instellings wat gebruik word deur die "
 "'Soek-URL' wat jy gebruik het om hierheen te kom."
 
-#: searx/templates/simple/preferences.html:162
+#: searx/templates/simple/preferences.html:158
 msgid "Press save to copy these preferences to your browser."
 msgstr "Druk stoor om hierdie voorkeure na jou blaaier te kopieer."
 
-#: searx/templates/simple/preferences.html:163
+#: searx/templates/simple/preferences.html:159
 msgid "Click here to view your browser preferences instead:"
 msgstr "Klik hier om jou blaaiervoorkeure te sien:"
 
-#: searx/templates/simple/preferences.html:173
+#: searx/templates/simple/preferences.html:169
 msgid "General"
 msgstr "Algemeen"
 
-#: searx/templates/simple/preferences.html:176
+#: searx/templates/simple/preferences.html:172
 msgid "Default categories"
 msgstr "Verstek kategoriee"
 
-#: searx/templates/simple/preferences.html:204
+#: searx/templates/simple/preferences.html:200
 msgid "User interface"
 msgstr "Gebruikerskoppelvlak"
 
-#: searx/templates/simple/preferences.html:224
+#: searx/templates/simple/preferences.html:220
 msgid "Privacy"
 msgstr "Privaatheid"
 
-#: searx/templates/simple/preferences.html:239
+#: searx/templates/simple/preferences.html:235
+#: searx/templates/simple/result_templates/images.html:63
 msgid "Engines"
 msgstr "Enjins"
 
-#: searx/templates/simple/preferences.html:241
+#: searx/templates/simple/preferences.html:237
 msgid "Currently used search engines"
 msgstr "Huidige gebruikte soekenjins"
 
-#: searx/templates/simple/preferences.html:250
+#: searx/templates/simple/preferences.html:246
 msgid "Special Queries"
 msgstr "Spesiale Navrae"
 
-#: searx/templates/simple/preferences.html:258
+#: searx/templates/simple/preferences.html:254
 msgid "Cookies"
 msgstr "Koekies"
 
-#: searx/templates/simple/results.html:30
-msgid "Number of results"
-msgstr "Aantal resultate"
-
-#: searx/templates/simple/results.html:36
+#: searx/templates/simple/results.html:32
 msgid "Info"
 msgstr "Info"
 
-#: searx/templates/simple/results.html:77
+#: searx/templates/simple/results.html:73
 msgid "Back to top"
 msgstr "Terug na bo"
 
-#: searx/templates/simple/results.html:95
+#: searx/templates/simple/results.html:91
 msgid "Previous page"
 msgstr "Vorige bladsy"
 
-#: searx/templates/simple/results.html:113
+#: searx/templates/simple/results.html:109
 msgid "Next page"
 msgstr "Volgende bladsy"
 
@@ -1088,95 +1095,83 @@ msgstr "maak skoon"
 msgid "search"
 msgstr "soek"
 
-#: searx/templates/simple/stats.html:21
+#: searx/templates/simple/stats.html:20
 msgid "There is currently no data available. "
 msgstr "Daar is tans geen data beskikbaar nie."
 
 #: searx/templates/simple/preferences/engines.html:24
-#: searx/templates/simple/stats.html:25
+#: searx/templates/simple/stats.html:24
 msgid "Engine name"
 msgstr "Enjin naam"
 
-#: searx/templates/simple/stats.html:26
+#: searx/templates/simple/stats.html:25
 msgid "Scores"
 msgstr "Tellings"
 
-#: searx/templates/simple/stats.html:27
+#: searx/templates/simple/stats.html:26
 msgid "Result count"
 msgstr "Resultaattelling"
 
 #: searx/templates/simple/elements/engines_msg.html:7
-#: searx/templates/simple/preferences/engines.html:31
-#: searx/templates/simple/stats.html:28
+#: searx/templates/simple/preferences/engines.html:30
+#: searx/templates/simple/stats.html:27
 msgid "Response time"
 msgstr "Reaksietyd"
 
-#: searx/templates/simple/preferences/engines.html:35
-#: searx/templates/simple/stats.html:29
+#: searx/templates/simple/preferences/engines.html:34
+#: searx/templates/simple/stats.html:28
 msgid "Reliability"
 msgstr "Betroubaarheid"
 
-#: searx/templates/simple/stats.html:59
+#: searx/templates/simple/stats.html:58
 msgid "Total"
 msgstr "Totaal"
 
-#: searx/templates/simple/stats.html:60
+#: searx/templates/simple/stats.html:59
 msgid "HTTP"
 msgstr "HTTP"
 
-#: searx/templates/simple/stats.html:61
+#: searx/templates/simple/stats.html:60
 msgid "Processing"
 msgstr "Verwerking"
 
-#: searx/templates/simple/stats.html:99
+#: searx/templates/simple/stats.html:98
 msgid "Warnings"
 msgstr "Waarskuwings"
 
-#: searx/templates/simple/stats.html:99
+#: searx/templates/simple/stats.html:98
 msgid "Errors and exceptions"
 msgstr "Foute en uitsonderings"
 
-#: searx/templates/simple/stats.html:105
+#: searx/templates/simple/stats.html:104
 msgid "Exception"
 msgstr "Uitsondering"
 
-#: searx/templates/simple/stats.html:107
+#: searx/templates/simple/stats.html:106
 msgid "Message"
 msgstr "Boodskap"
 
-#: searx/templates/simple/stats.html:109
+#: searx/templates/simple/stats.html:108
 msgid "Percentage"
 msgstr "Persentasie"
 
-#: searx/templates/simple/stats.html:111
+#: searx/templates/simple/stats.html:110
 msgid "Parameter"
 msgstr "Parameter"
 
 #: searx/templates/simple/result_templates/code.html:29
 #: searx/templates/simple/result_templates/file.html:24
-#: searx/templates/simple/stats.html:119
+#: searx/templates/simple/stats.html:118
 msgid "Filename"
 msgstr "Lêernaam"
 
-#: searx/templates/simple/stats.html:120
+#: searx/templates/simple/stats.html:119
 msgid "Function"
 msgstr "Funksie"
 
-#: searx/templates/simple/stats.html:121
+#: searx/templates/simple/stats.html:120
 msgid "Code"
 msgstr "Kode"
-
-#: searx/templates/simple/stats.html:128
-msgid "Checker"
-msgstr "Inspekteur"
-
-#: searx/templates/simple/stats.html:131
-msgid "Failed test"
-msgstr "Mislukte toets"
-
-#: searx/templates/simple/stats.html:132
-msgid "Comment(s)"
-msgstr "Opmerking(s)"
 
 #: searx/templates/simple/answer/translations.html:12
 #: searx/templates/simple/preferences/answerers.html:8
@@ -1252,7 +1247,7 @@ msgstr "Outo-bespeur"
 #: searx/templates/simple/filters/safesearch.html:2
 #: searx/templates/simple/filters/safesearch.html:3
 #: searx/templates/simple/filters/safesearch.html:4
-#: searx/templates/simple/preferences/engines.html:27
+#: searx/templates/simple/preferences/engines.html:26
 #: searx/templates/simple/preferences/safesearch.html:2
 msgid "SafeSearch"
 msgstr "VeiligeSoek"
@@ -1273,7 +1268,7 @@ msgid "None"
 msgstr "Geen"
 
 #: searx/templates/simple/filters/time_range.html:1
-#: searx/templates/simple/preferences/engines.html:28
+#: searx/templates/simple/preferences/engines.html:27
 msgid "Time range"
 msgstr "Tydreeks"
 
@@ -1439,17 +1434,9 @@ msgstr "Voeg gekopieerde voorkeur-hash (sonder URL) in om te herstel"
 msgid "Preferences hash"
 msgstr "Voorkeure hash"
 
-#: searx/templates/simple/preferences/doi_resolver.html:1
-msgid "Digital Object Identifier (DOI)"
-msgstr "Digitale Objekidentifiseerder (DOI)"
-
-#: searx/templates/simple/preferences/doi_resolver.html:6
-msgid "Open Access DOI resolver"
-msgstr "Ooptoegang DOI-oplosser"
-
-#: searx/templates/simple/preferences/doi_resolver.html:18
-msgid "Select service used by DOI rewrite"
-msgstr "Kies diens wat deur DOI herskryf gebruik word"
+#: searx/templates/simple/preferences/doi_resolver.html:2
+msgid "DOI Resolver"
+msgstr ""
 
 #: searx/templates/simple/preferences/engines.html:9
 msgid ""
@@ -1471,15 +1458,11 @@ msgstr "Deaktiveer alles"
 msgid "!bang"
 msgstr "!bang"
 
-#: searx/templates/simple/preferences/engines.html:26
-msgid "Supports selected language"
-msgstr "Ondersteun gekose taal"
-
-#: searx/templates/simple/preferences/engines.html:29
+#: searx/templates/simple/preferences/engines.html:28
 msgid "Weight"
 msgstr "Gewig"
 
-#: searx/templates/simple/preferences/engines.html:33
+#: searx/templates/simple/preferences/engines.html:32
 msgid "Max time"
 msgstr "Maks tyd"
 
@@ -1661,12 +1644,12 @@ msgid "hide media"
 msgstr "versteek media"
 
 #: searx/templates/simple/result_templates/default.html:14
-#: searx/templates/simple/result_templates/videos.html:14
+#: searx/templates/simple/result_templates/videos.html:15
 msgid "This site did not provide any description."
 msgstr "Hierdie webwerf het geen beskrywing verskaf nie."
 
 #: searx/templates/simple/result_templates/file.html:30
-#: searx/templates/simple/result_templates/images.html:22
+#: searx/templates/simple/result_templates/images.html:61
 #: searx/templates/simple/result_templates/torrent.html:18
 msgid "Filesize"
 msgstr "Lêergrootte"
@@ -1684,21 +1667,21 @@ msgstr "Tik"
 msgid "Download"
 msgstr "Laai af"
 
-#: searx/templates/simple/result_templates/images.html:20
+#: searx/templates/simple/result_templates/images.html:53
 msgid "Resolution"
 msgstr "Resolusie"
 
-#: searx/templates/simple/result_templates/images.html:21
-msgid "Format"
-msgstr "Formaat"
+#: searx/templates/simple/result_templates/images.html:55
+msgid "Image formats"
+msgstr "Beeldformate"
 
-#: searx/templates/simple/result_templates/images.html:24
-msgid "Engine"
-msgstr "Enjin"
+#: searx/templates/simple/result_templates/images.html:56
+msgid "original format"
+msgstr "oorspronklike formaat"
 
-#: searx/templates/simple/result_templates/images.html:25
+#: searx/templates/simple/result_templates/images.html:64
 msgid "View source"
-msgstr "Sien Bron"
+msgstr "Bekyk bron"
 
 #: searx/templates/simple/result_templates/map.html:12
 msgid "address"
@@ -2160,4 +2143,58 @@ msgstr "versteek video"
 #~ "Laai outomaties die volgende bladsy "
 #~ "wanneer na die onderkant van die "
 #~ "huidige bladsy geblaai word"
+
+#~ msgid "Failed checker test(s): "
+#~ msgstr "Mislukte toetsertoets(e): "
+
+#~ msgid "Checker"
+#~ msgstr "Inspekteur"
+
+#~ msgid "Failed test"
+#~ msgstr "Mislukte toets"
+
+#~ msgid "Comment(s)"
+#~ msgstr "Opmerking(s)"
+
+#~ msgid "Start submitting a new issue on GitHub"
+#~ msgstr "Begin om 'n nuwe probleem op GitHub in te dien"
+
+#~ msgid "Please check for existing bugs about this engine on GitHub"
+#~ msgstr "Kyk asseblief vir bestaande goggas vir hierdie enjin op GitHub"
+
+#~ msgid "I confirm there is no existing bug about the issue I encounter"
+#~ msgstr ""
+#~ "Ek bevestig daar is nie 'n "
+#~ "bestaande gogga oor die probleem wat "
+#~ "ek teekom nie"
+
+#~ msgid "If this is a public instance, please specify the URL in the bug report"
+#~ msgstr ""
+#~ "As dit 'n publieke geval is, "
+#~ "spesifiseer asseblief die URL in die "
+#~ "foutverslag"
+
+#~ msgid "Submit a new issue on Github including the above information"
+#~ msgstr "Dien 'n nuwe probleem in op GitHub insluitend die bogenoemde inligting"
+
+#~ msgid "Supports selected language"
+#~ msgstr "Ondersteun gekose taal"
+
+#~ msgid "Number of results"
+#~ msgstr "Aantal resultate"
+
+#~ msgid "Format"
+#~ msgstr "Formaat"
+
+#~ msgid "Engine"
+#~ msgstr "Enjin"
+
+#~ msgid "Digital Object Identifier (DOI)"
+#~ msgstr "Digitale Objekidentifiseerder (DOI)"
+
+#~ msgid "Open Access DOI resolver"
+#~ msgstr "Ooptoegang DOI-oplosser"
+
+#~ msgid "Select service used by DOI rewrite"
+#~ msgstr "Kies diens wat deur DOI herskryf gebruik word"
 

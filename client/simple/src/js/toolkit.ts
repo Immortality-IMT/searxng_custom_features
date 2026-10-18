@@ -5,7 +5,6 @@ import type { KeyBindingLayout } from "./main/keyboard.ts";
 // synced with searx/webapp.py get_client_settings
 type Settings = {
   plugins?: string[];
-  advanced_search?: boolean;
   autocomplete?: string;
   autocomplete_min?: number;
   doi_resolver?: string;
@@ -123,10 +122,10 @@ export const ready = (callback: () => void, options?: ReadyOptions): void => {
     }
   }
 
-  if (document.readyState !== "loading") {
-    callback();
-  } else {
+  if (document.readyState === "loading") {
     listen("DOMContentLoaded", document, callback, { once: true });
+  } else {
+    callback();
   }
 };
 

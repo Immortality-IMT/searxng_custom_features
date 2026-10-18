@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Implementations needed for a branding of SearXNG."""
+
 # pylint: disable=too-few-public-methods
 
 # Struct fields aren't discovered in Python 3.14
@@ -16,6 +17,17 @@ class BrandCustom(msgspec.Struct, kw_only=True, forbid_unknown_fields=True):
 
     links: dict[str, str] = {}
     """Custom entries in the footer of the WEB page: ``[title]: [link]``"""
+
+
+class ThemeColors(msgspec.Struct, kw_only=True, forbid_unknown_fields=True):
+    """Custom settings for theme colors in the brand section."""
+
+    theme_color_light: str = "#3050ff"
+    background_color_light: str = "#fff"
+    theme_color_dark: str = "#58f"
+    background_color_dark: str = "#222428"
+    theme_color_black: str = "#3050ff"
+    background_color_black: str = "#000"
 
 
 class SettingsBrand(msgspec.Struct, kw_only=True, forbid_unknown_fields=True):
@@ -53,6 +65,9 @@ class SettingsBrand(msgspec.Struct, kw_only=True, forbid_unknown_fields=True):
     .. autoclass:: searx.brand.BrandCustom
        :members:
     """
+
+    pwa_colors: ThemeColors = msgspec.field(default_factory=ThemeColors)
+    """Custom settings for PWA colors."""
 
     # new_issue_url is a hackish solution tailored for only one hoster (GH).  As
     # long as we don't have a more general solution, we should support it in the

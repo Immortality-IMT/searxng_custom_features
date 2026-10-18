@@ -24,7 +24,8 @@ DDG's content search / see engine ``duckduckgo_extra.py``
 Special features of the no-JS services (DDG-lite & DDG-html):
 
 - The no-JS clients receive a form that contains all the controlling parameters.
-- When the form data is submitted, a real WEB browser sets the HTTP _Sec-Fetch_ headers.
+- When the form data is submitted, a real WEB browser sets the HTTP *Sec-Fetch*
+  headers.
 
 HTML ``<form>``, HTTP-Headers & DDG's bot Blocker:
 
@@ -163,32 +164,29 @@ Terms / phrases that you keep coming across:
    https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Accept-Language
 
 """
+
 # pylint: disable=global-statement
 
-import typing as t
 import json
 import re
+import typing as t
 
 import babel
-import lxml.html
 
 from searx import locales
-
+from searx.enginelib import EngineCache
+from searx.enginelib.traits import EngineTraits
+from searx.exceptions import SearxEngineCaptchaException
 from searx.external_bang import EXTERNAL_BANGS, get_node  # type: ignore
-
+from searx.result_types import EngineResults
 from searx.utils import (
+    ElementType,
     eval_xpath,
     eval_xpath_getindex,
     extr,
     extract_text,
-    ElementType,
     gen_useragent,
 )
-from searx.network import get  # see https://github.com/searxng/searxng/issues/762
-from searx.enginelib.traits import EngineTraits
-from searx.enginelib import EngineCache
-from searx.exceptions import SearxEngineCaptchaException
-from searx.result_types import EngineResults
 
 if t.TYPE_CHECKING:
     from searx.extended_types import SXNG_Response
@@ -205,6 +203,7 @@ about: dict[str, str | bool] = {
 categories: list[str] = ["general", "web"]
 paging: bool = True
 time_range_support: bool = True
+language_support = True
 safesearch: bool = True
 """DDG-lite: user can't select but the results are filtered."""
 
@@ -238,7 +237,7 @@ def get_vqd(
     query: str,
     params: "OnlineParams",
 ) -> str:
-    """Returns the vqd_ vakue that fits to the *query* (and HTTP User-Agent_
+    """Returns the ``vqd`` value that fits to the *query* (and HTTP User-Agent_
     header).
 
     :param query: the query term
@@ -354,7 +353,7 @@ def quote_ddg_bangs(query: str) -> str:
         if not val.strip():
             continue
 
-        if val.startswith('!') and get_node(EXTERNAL_BANGS, val[1:]):
+        if val.startswith("!") and get_node(EXTERNAL_BANGS, val[1:]):
             val = f"'{val}'"
         _q.append(val)
     return " ".join(_q)
@@ -381,6 +380,12 @@ def request(query: str, params: "OnlineParams") -> None:
     # The vqd value is generated from the query and the UA header. To be able to
     # reuse the vqd value, the UA header must be static.
     headers["User-Agent"] = _HTTP_User_Agent
+
+    headers["Sec-Fetch-Dest"] = "document"
+    headers["Sec-Fetch-Mode"] = "navigate"
+    headers["Sec-Fetch-Site"] = "same-origin"
+    headers["Sec-Fetch-User"] = "?1"
+
     headers["Referer"] = "https://html.duckduckgo.com/"
 
     ui_lang = params["searxng_locale"]
@@ -411,7 +416,8 @@ def request(query: str, params: "OnlineParams") -> None:
             # reputation of the SearXNG IP and DDG starts to activate CAPTCHAs.
             # set suspend time to zero is OK --> ddg does not block the IP
             raise SearxEngineCaptchaException(
-                suspended_time=0, message=f"VQD missed (page: {params['pageno']}, locale: {params['searxng_locale']})"
+                suspended_time=0,
+                message=f"VQD missed (page: {params['pageno']}, locale: {params['searxng_locale']})",
             )
 
         if params["searxng_locale"].startswith("zh"):
@@ -463,7 +469,7 @@ def response(resp: "SXNG_Response") -> EngineResults:
     if resp.status_code == 303:
         return res
 
-    doc = lxml.html.fromstring(resp.text)
+    doc = resp.html()
     params = resp.search_params
 
     if is_ddg_captcha(doc):
@@ -535,34 +541,34 @@ def fetch_traits(engine_traits: EngineTraits):
 
     """
     # pylint: disable=too-many-branches, too-many-statements, disable=import-outside-toplevel
+
+    from searx.network import get  # see https://github.com/searxng/searxng/issues/762
     from searx.utils import js_obj_str_to_python
 
     # fetch regions
 
-    engine_traits.all_locale = 'wt-wt'
+    engine_traits.all_locale = "wt-wt"
 
     # updated from u661.js to u.7669f071a13a7daa57cb / should be updated automatically?
-    resp = get('https://duckduckgo.com/dist/util/u.7669f071a13a7daa57cb.js')
-
+    resp = get("https://duckduckgo.com/dist/util/u.7669f071a13a7daa57cb.js", timeout=5)
     if not resp.ok:
-        print("ERROR: response from DuckDuckGo is not OK.")
+        raise RuntimeError("Response from DuckDuckGo regions is not OK.")
 
-    js_code = extr(resp.text, 'regions:', ',snippetLengths')
+    js_code = extr(resp.text, "regions:", ",snippetLengths")
 
     regions = json.loads(js_code)
     for eng_tag, name in regions.items():
-
-        if eng_tag == 'wt-wt':
-            engine_traits.all_locale = 'wt-wt'
+        if eng_tag == "wt-wt":
+            engine_traits.all_locale = "wt-wt"
             continue
 
         region = ddg_reg_map.get(eng_tag)
-        if region == 'skip':
+        if region == "skip":
             continue
 
         if not region:
-            eng_territory, eng_lang = eng_tag.split('-')
-            region = eng_lang + '_' + eng_territory.upper()
+            eng_territory, eng_lang = eng_tag.split("-")
+            region = eng_lang + "_" + eng_territory.upper()
 
         try:
             sxng_tag = locales.region_tag(babel.Locale.parse(region))
@@ -579,25 +585,23 @@ def fetch_traits(engine_traits: EngineTraits):
 
     # fetch languages
 
-    engine_traits.custom['lang_region'] = {}
+    engine_traits.custom["lang_region"] = {}
 
-    js_code = extr(resp.text, 'languages:', ',regions')
+    js_code = extr(resp.text, "languages:", ",regions")
 
     languages: dict[str, str] = js_obj_str_to_python(js_code)
     for eng_lang, name in languages.items():
-
-        if eng_lang == 'wt_WT':
+        if eng_lang == "wt_WT":
             continue
 
         babel_tag = ddg_lang_map.get(eng_lang, eng_lang)
-        if babel_tag == 'skip':
+        if babel_tag == "skip":
             continue
 
         try:
-
-            if babel_tag == 'lang_region':
+            if babel_tag == "lang_region":
                 sxng_tag = locales.region_tag(babel.Locale.parse(eng_lang))
-                engine_traits.custom['lang_region'][sxng_tag] = eng_lang
+                engine_traits.custom["lang_region"][sxng_tag] = eng_lang
                 continue
 
             sxng_tag = locales.language_tag(babel.Locale.parse(babel_tag))

@@ -13,7 +13,7 @@ import copy
 import logging
 import pathlib
 
-from ..compat import tomllib
+import tomllib
 
 __all__ = ['Config', 'UNSET', 'SchemaIssue', 'set_global_cfg', 'get_global_cfg']
 
@@ -182,7 +182,7 @@ class Config:
             if default is UNSET:
                 raise KeyError(name)
             return default
-        (modulename, name) = str(fqn).rsplit('.', 1)
+        modulename, name = str(fqn).rsplit('.', 1)
         m = __import__(modulename, {}, {}, [name], 0)
         return getattr(m, name)
 
