@@ -4,9 +4,23 @@
 # shellcheck disable=SC2059,SC1117
 
 # ubuntu, debian, arch, fedora, centos ...
+# Ubuntu/Debian derivatives (Linux Mint, Pop!_OS, Zorin, elementary ...) are
+# mapped to their base distribution, otherwise apt based code paths (pkg_install,
+# valkey, backports ...) are silently skipped.
 DIST_ID=$(
     source /etc/os-release
-    echo "$ID"
+    case "$ID" in
+        linuxmint | pop | zorin | elementary | neon)
+            if [[ -n "${UBUNTU_CODENAME}" ]]; then
+                echo "ubuntu"
+            elif [[ -n "${DEBIAN_CODENAME}" ]]; then
+                echo "debian"
+            else
+                echo "$ID"
+            fi
+            ;;
+        *) echo "$ID" ;;
+    esac
 )
 # shellcheck disable=SC2034
 DIST_VERS=$(
@@ -16,7 +30,8 @@ DIST_VERS=$(
 # shellcheck disable=SC2034
 DIST_VERSION_CODENAME=$(
     source /etc/os-release
-    echo "$VERSION_CODENAME"
+    # derivatives: use the codename of the base distribution (e.g. noble)
+    echo "${UBUNTU_CODENAME:-${DEBIAN_CODENAME:-$VERSION_CODENAME}}"
 )
 
 ADMIN_NAME="${ADMIN_NAME:-$(git config user.name)}"

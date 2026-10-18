@@ -115,8 +115,8 @@ usage() {
     # shellcheck disable=SC1117
     cat <<EOF
 usage:
-  $(basename "$0") install    [all|user|pyenv|settings|uwsgi|valkey|nginx|apache|searxng-src|packages|buildhost]
-  $(basename "$0") remove     [all|user|pyenv|settings|uwsgi|valkey|nginx|apache]
+  $(basename "$0") install    [all|user|pyenv|settings|uwsgi|valkey|nginx|https|apache|searxng-src|packages|buildhost]
+  $(basename "$0") remove     [all|user|pyenv|settings|uwsgi|valkey|nginx|https|apache]
   $(basename "$0") instance   [cmd|update|check|localtest|inspect]
 install|remove:
   all           : complete (de-) installation of the SearXNG service
@@ -171,6 +171,7 @@ main() {
             required_commands \
                 sudo systemctl install git wget curl ||
                 exit
+            ensure_cache_dir
             ;;
     esac
 
@@ -202,6 +203,7 @@ main() {
                 packages) searxng.install.packages ;;
                 buildhost) searxng.install.buildhost ;;
                 nginx) searxng.nginx.install ;;
+                https) searxng.nginx.https ;;
                 apache) searxng.apache.install ;;
                 valkey) searxng.install.valkey ;;
                 *)
@@ -219,6 +221,7 @@ main() {
                 settings) searxng.remove.settings ;;
                 uwsgi) searxng.remove.uwsgi ;;
                 apache) searxng.apache.remove ;;
+                https) searxng.remove.https ;;
                 remove) searxng.nginx.remove ;;
                 valkey) searxng.remove.valkey ;;
                 redis) searxng.remove.redis ;;
@@ -283,15 +286,88 @@ main() {
     esac
 }
 
+# ==============================================================================
+# lib.sh builds config templates in ${REPO_ROOT}/cache as ${SUDO_USER}: when the
+# repository lives in /usr/local/searxng (root owned) that mkdir fails.
+# ==============================================================================
+ensure_cache_dir() {
+    if [[ -n "${SUDO_USER}" && "${SUDO_USER}" != "root" ]]; then
+        mkdir -p "${REPO_ROOT}/cache"
+        chown -R "${SUDO_USER}:" "${REPO_ROOT}/cache"
+    fi
+}
+
+# ==============================================================================
+# Verify that the service user can traverse and read the source directory
+# ==============================================================================
+check_source_accessibility() {
+    local current_path="$PWD"
+    local temp_user="${SERVICE_USER:-searxng}"
+    local target="${SERVICE_HOME:-/usr/local/searxng}"
+
+    # already running from the service home: just make sure the service user
+    # owns the directory itself (non-recursive), then continue
+    if [[ "$current_path" == "$target" ]]; then
+        chown "${temp_user}:${temp_user}" "$target"
+        return 0
+    fi
+
+    # service user can read the source: nothing to do
+    if sudo -u "$temp_user" test -r "$current_path" 2>/dev/null; then
+        return 0
+    fi
+    # only handle the private-home-directory case
+    if [[ ! "$current_path" =~ ^/home/ ]]; then
+        return 0
+    fi
+
+    info_msg "'${temp_user}' cannot read ${current_path}: relocating repository to ${target}"
+
+    mkdir -p "$target"
+    cp -a "$current_path"/. "$target"/
+
+    # Keep root as owner (the installer runs as root). A repo owned by the
+    # service user makes root's git calls fail with "dubious ownership",
+    # leaving GIT_URL / GIT_BRANCH empty. World-readable is enough for cloning.
+    # (skip the service user's own work dirs so reruns don't take them away)
+    find "$target" -mindepth 1 \
+        \( -path "$target/searxng-src" -o -path "$target/searx-pyenv" \) -prune \
+        -o -exec chown root:root {} +
+    chmod -R a+rX "$target"
+    # ...but the service user needs write access to its own home directory
+    # (non-recursive) to create searxng-src, searx-pyenv, caches, etc.
+    chown "${temp_user}:${temp_user}" "$target"
+
+    # trust the new location before the script re-reads git state
+    local dir
+    for dir in "$target" "$target/.git"; do
+        if ! git config --system --get-all safe.directory | grep -qxF "$dir"; then
+            git config --system --add safe.directory "$dir"
+        fi
+    done
+
+    if ! git -C "$target" remote get-url origin >/dev/null 2>&1; then
+        warn_msg "no 'origin' remote in ${target}: add one with 'git remote add origin <url>' if updates should come from your fork"
+    fi
+
+    info_msg "restarting installer from ${target}"
+    cd "$target" || exit 1
+    exec ./utils/searxng.sh install all
+}
+
 searxng.install.all() {
     rst_title "SearXNG installation" part
 
     local valkey_url
 
     rst_title "SearXNG"
-    searxng.install.packages
-    wait_key 10
+
     searxng.install.user
+    wait_key 10
+
+    check_source_accessibility
+
+    searxng.install.packages
     wait_key 10
     searxng.install.clone
     wait_key
@@ -347,6 +423,104 @@ In your instance, valkey DB connector is configured at:
     fi
 }
 
+# ==============================================================================
+# HTTPS for the nginx site (self-signed certificate by default)
+#
+# Environment (all optional):
+#   SEARXNG_HTTPS_HOST   server name / certificate CN   (default: $(uname -n))
+#   SEARXNG_HTTPS_CERT   path to an existing certificate (e.g. from certbot)
+#   SEARXNG_HTTPS_KEY    path to the matching private key
+# ==============================================================================
+SEARXNG_HTTPS_DIR="/etc/ssl/searxng"
+SEARXNG_HTTPS_CONF="/etc/nginx/conf.d/searxng-https.conf"
+
+searxng.nginx.https() {
+    rst_title "Install HTTPS site for SearXNG (nginx)" section
+
+    if ! nginx_is_installed; then
+        err_msg "Nginx packages are not installed: run '$(basename "$0") install nginx' first"
+        return 42
+    fi
+    if [[ ! -f "${NGINX_APPS_AVAILABLE}/${NGINX_SEARXNG_SITE}" ]]; then
+        info_msg "SearXNG's nginx site is not installed yet: installing it first"
+        searxng.nginx.install
+    fi
+
+    local host="${SEARXNG_HTTPS_HOST:-$(uname -n)}"
+    local cert="${SEARXNG_HTTPS_CERT:-${SEARXNG_HTTPS_DIR}/searxng.crt}"
+    local key="${SEARXNG_HTTPS_KEY:-${SEARXNG_HTTPS_DIR}/searxng.key}"
+
+    if [[ -z "${SEARXNG_HTTPS_CERT}" ]]; then
+        if [[ -f "$cert" && -f "$key" ]]; then
+            info_msg "re-using existing self-signed certificate: $cert"
+        else
+            info_msg "create self-signed certificate for: ${host}, localhost, 127.0.0.1"
+            mkdir -p "${SEARXNG_HTTPS_DIR}"
+            openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
+                -subj "/CN=${host}" \
+                -addext "subjectAltName=DNS:${host},DNS:localhost,IP:127.0.0.1" \
+                -keyout "$key" -out "$cert" 2>/dev/null ||
+                die 42 "openssl failed to create the certificate"
+            chmod 600 "$key"
+            chmod 644 "$cert"
+        fi
+    elif [[ ! -f "$cert" || ! -f "$key" ]]; then
+        die 42 "SEARXNG_HTTPS_CERT / SEARXNG_HTTPS_KEY: file not found"
+    fi
+
+    # only listen on IPv6 if the host has it (nginx refuses to start otherwise)
+    local listen6=""
+    if [[ -s /proc/net/if_inet6 ]]; then
+        listen6="listen [::]:443 ssl;"
+    fi
+
+    info_msg "write ${SEARXNG_HTTPS_CONF}"
+    cat >"${SEARXNG_HTTPS_CONF}" <<EOF
+# generated by searxng.sh: HTTPS server block for SearXNG
+server {
+    listen 443 ssl;
+    ${listen6}
+    server_name ${host} localhost;
+
+    ssl_certificate     ${cert};
+    ssl_certificate_key ${key};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SearXNG_SSL:2m;
+    ssl_session_timeout 1d;
+
+    # SearXNG's location block(s) (installed by 'install nginx')
+    include ${NGINX_APPS_ENABLED}/*.conf;
+}
+EOF
+
+    if ! nginx -t; then
+        rm -f "${SEARXNG_HTTPS_CONF}"
+        die 42 "nginx configuration test failed: HTTPS site removed again"
+    fi
+    nginx_reload
+
+    local path="${SEARXNG_URL_PATH%/}/"
+    if curl -ksf --max-time 10 -o /dev/null -H "Host: ${host}" "https://127.0.0.1${path}"; then
+        info_msg "HTTPS is working: https://${host}${path}"
+    else
+        err_msg "no answer from https://127.0.0.1${path} : check 'systemctl status nginx uwsgi'"
+    fi
+    if [[ -z "${SEARXNG_HTTPS_CERT}" ]]; then
+        rst_para "\
+The certificate is self-signed: browsers show a warning once, which you can
+accept for a private instance.  For a public domain use a trusted certificate:
+install certbot, obtain a certificate for your domain and re-run with
+SEARXNG_HTTPS_HOST, SEARXNG_HTTPS_CERT and SEARXNG_HTTPS_KEY set."
+    fi
+}
+
+searxng.remove.https() {
+    rst_title "Remove HTTPS site for SearXNG (nginx)" section
+    rm -f "${SEARXNG_HTTPS_CONF}"
+    rm -rf "${SEARXNG_HTTPS_DIR}"
+    if nginx_is_installed; then nginx_reload; fi
+}
+
 searxng.install.http.site() {
 
     if apache_is_installed; then
@@ -359,8 +533,17 @@ searxng.install.http.site() {
         if ask_yn "Do you want to install a reverse proxy" Yn; then
             searxng.nginx.install
         fi
+        if ask_yn "Do you want to add a HTTPS site (self-signed certificate)" Yn; then
+            searxng.nginx.https
+        fi
     else
-        info_msg "Don't forget to install HTTP site."
+        info_msg "No web server found on this host."
+        if ask_yn "Do you want to install nginx with a HTTPS site for SearXNG" Yn; then
+            searxng.nginx.install
+            searxng.nginx.https
+        else
+            info_msg "Don't forget to install HTTP site."
+        fi
     fi
 }
 
@@ -474,13 +657,22 @@ searxng.install.pyenv() {
     if [[ ! -f "${SEARXNG_SRC}/manage" ]]; then
         die 42 "To create pyenv for SearXNG, first install searxng-src."
     fi
+    if ! command -v python3 >/dev/null 2>&1; then
+        die 42 "python3 not found: install it with 'apt install python3 python3-venv python3-dev'"
+    fi
+    if ! python3 -c "import venv, ensurepip" >/dev/null 2>&1; then
+        die 42 "python3 venv/ensurepip missing: install it with 'apt install python3-venv'"
+    fi
     info_msg "create pyenv in ${SEARXNG_PYENV}"
     tee_stderr 0.1 <<EOF | sudo -H -u "${SERVICE_USER}" -i 2>&1 | prefix_stdout "$_service_prefix"
 rm -rf "${SEARXNG_PYENV}"
-python -m venv "${SEARXNG_PYENV}"
+python3 -m venv "${SEARXNG_PYENV}"
 grep -qFs -- 'source ${SEARXNG_PYENV}/bin/activate' ~/.profile \
   || echo 'source ${SEARXNG_PYENV}/bin/activate' >> ~/.profile
 EOF
+    if [[ ! -f "${SEARXNG_PYENV}/bin/activate" ]]; then
+        die 42 "virtualenv was not created: ${SEARXNG_PYENV}/bin/activate is missing"
+    fi
     info_msg "inspect python's virtual environment"
     tee_stderr 0.1 <<EOF | sudo -H -u "${SERVICE_USER}" -i 2>&1 | prefix_stdout "$_service_prefix"
 command -v python && python --version
@@ -660,8 +852,8 @@ searxng.instance.localtest() {
     tee_stderr 0.1 <<EOF | sudo -H -u "${SERVICE_USER}" -i 2>&1 | prefix_stdout "$_service_prefix"
 export SEARXNG_SETTINGS_PATH="${SEARXNG_SETTINGS_PATH}"
 cd ${SEARXNG_SRC}
-timeout 10 python -m searx/webapp &
-sleep 3
+timeout 15 python -m searx.webapp &
+sleep 6
 curl --location --verbose --head --insecure ${SEARXNG_INTERNAL_HTTP}
 EOF
     echo
