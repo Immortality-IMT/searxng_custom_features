@@ -116,7 +116,7 @@ usage() {
     cat <<EOF
 usage:
   $(basename "$0") install    [all|user|pyenv|settings|uwsgi|valkey|nginx|https|apache|searxng-src|packages|buildhost]
-  $(basename "$0") remove     [all|user|pyenv|settings|uwsgi|valkey|nginx|https|apache]
+  $(basename "$0") remove     [all|user|pyenv|settings|uwsgi|valkey|redis|nginx|https|apache|packages|verify|repo]
   $(basename "$0") instance   [cmd|update|check|localtest|inspect]
 install|remove:
   all           : complete (de-) installation of the SearXNG service
@@ -129,7 +129,13 @@ install|remove:
 install:
   valkey        : install a local valkey server
 remove:
-  redis         : remove a local redis server ${REDIS_HOME}/run/redis.sock
+  redis         : remove redis (local build or packages) after confirmation
+  valkey        : remove valkey (packages, user, APT backports source) after confirmation
+  packages      : purge OS packages (uwsgi, valkey, nginx, ...) with confirmation per group
+  verify        : search the system for SearXNG leftovers
+  repo          : delete this repository checkout
+environment:
+  SEARXNG_HTTP_SERVER=nginx|apache|none  skip the web server question on install
 install:
   searxng-src   : clone ${GIT_URL} into ${SEARXNG_SRC}
   packages      : installs packages from OS package manager required by SearXNG
@@ -168,6 +174,7 @@ main() {
             nginx_distro_setup
             apache_distro_setup
             uWSGI_distro_setup
+            [[ $1 == install ]] && searxng.ensure_tools
             required_commands \
                 sudo systemctl install git wget curl ||
                 exit
@@ -222,7 +229,10 @@ main() {
                 uwsgi) searxng.remove.uwsgi ;;
                 apache) searxng.apache.remove ;;
                 https) searxng.remove.https ;;
-                remove) searxng.nginx.remove ;;
+                nginx) searxng.nginx.remove ;;
+                packages) searxng.remove.packages ;;
+                verify) searxng.remove.verify ;;
+                repo) searxng.remove.repo ;;
                 valkey) searxng.remove.valkey ;;
                 redis) searxng.remove.redis ;;
                 *)
@@ -390,6 +400,7 @@ searxng.install.all() {
     if ask_yn "Do you want to run some checks?" Yn; then
         searxng.instance.self.call searxng.check
     fi
+    searxng.install.summary
 }
 
 searxng.install.valkey.db() {
@@ -500,10 +511,10 @@ EOF
     nginx_reload
 
     local path="${SEARXNG_URL_PATH%/}/"
-    if curl -ksf --max-time 10 -o /dev/null -H "Host: ${host}" "https://127.0.0.1${path}"; then
-        info_msg "HTTPS is working: https://${host}${path}"
+    if searxng.http.check https "${host}"; then
+        info_msg "HTTPS is working: https://${host}${path} (HTTP ${SEARXNG_HTTP_CODE})"
     else
-        err_msg "no answer from https://127.0.0.1${path} : check 'systemctl status nginx uwsgi'"
+        err_msg "no usable answer from https://127.0.0.1${path} (HTTP ${SEARXNG_HTTP_CODE}) : check 'systemctl status nginx uwsgi'"
     fi
     if [[ -z "${SEARXNG_HTTPS_CERT}" ]]; then
         rst_para "\
@@ -522,51 +533,95 @@ searxng.remove.https() {
 }
 
 searxng.install.http.site() {
+    local choice="${SEARXNG_HTTP_SERVER:-}" have_nginx=0 have_apache=0 busy
 
-    if apache_is_installed; then
-        info_msg "Apache is installed on this host."
-        if ask_yn "Do you want to install a reverse proxy" Yn; then
-            searxng.apache.install
-        fi
-    elif nginx_is_installed; then
-        info_msg "Nginx is installed on this host."
-        if ask_yn "Do you want to install a reverse proxy" Yn; then
-            searxng.nginx.install
-        fi
-        if ask_yn "Do you want to add a HTTPS site (self-signed certificate)" Yn; then
-            searxng.nginx.https
-        fi
-    else
-        info_msg "No web server found on this host."
-        if ask_yn "Do you want to install nginx with a HTTPS site for SearXNG" Yn; then
-            searxng.nginx.install
-            searxng.nginx.https
+    if [[ -z ${choice} ]]; then
+        nginx_is_installed && have_nginx=1
+        apache_is_installed && have_apache=1
+        if ((have_nginx && have_apache)); then
+            info_msg "Both nginx and apache are installed on this host."
+            _ask_choice "Which web server should serve SearXNG?" nginx apache none
+            choice="${CHOICE}"
+        elif ((have_nginx)); then
+            info_msg "Nginx is installed on this host."
+            if ask_yn "Use nginx as reverse proxy for SearXNG?" Yn; then choice=nginx; else choice=none; fi
+        elif ((have_apache)); then
+            info_msg "Apache is installed on this host."
+            if ask_yn "Use apache as reverse proxy for SearXNG?" Yn; then choice=apache; else choice=none; fi
         else
-            info_msg "Don't forget to install HTTP site."
+            info_msg "No web server found on this host."
+            rst_para "nginx is the recommended choice (used by the SearXNG documentation)."
+            _ask_choice "Which web server do you want to install for SearXNG?" nginx apache none
+            choice="${CHOICE}"
         fi
     fi
+
+    case "${choice}" in
+        nginx | apache)
+            busy="$(ss -ltnpH 'sport = :80' 2>/dev/null | head -n1)"
+            if [[ -n ${busy} ]] && ! [[ ${busy} =~ nginx|apache2|httpd ]]; then
+                warn_msg "port 80 is already used by another service:"
+                echo "  ${busy}"
+                if ! ask_yn "Continue anyway?"; then
+                    return 0
+                fi
+            fi
+            ;;
+    esac
+
+    case "${choice}" in
+        nginx)
+            nginx_is_installed || FORCE_SELECTION=Y install_nginx
+            searxng.nginx.install
+            searxng.nginx.activate
+            if ask_yn "Do you want to add a HTTPS site (self-signed certificate)?" Yn; then
+                searxng.nginx.https
+            fi
+            ;;
+        apache)
+            apache_is_installed || FORCE_SELECTION=Y install_apache
+            searxng.apache.install
+            searxng.apache.activate
+            ;;
+        *)
+            info_msg "No HTTP site installed.  Don't forget to install one."
+            ;;
+    esac
 }
 
 searxng.remove.all() {
-    local valkey_url
-
     rst_title "De-Install SearXNG (service)"
+    rst_para "\
+This removes: the web server site(s), the uWSGI app, a local valkey/redis
+server installed by this script, the service user ${SERVICE_USER} with
+${SERVICE_HOME}, ${SEARXNG_SETTINGS_PATH} and (after separate confirmation)
+OS packages.  Packages that other software may need are asked one by one."
     if ! ask_yn "Do you really want to deinstall SearXNG?"; then
         return
     fi
+    cd / || true
 
-    valkey_url=$(searxng.instance.get_setting valkey.url)
-    if ! [[ ${valkey_url} = unix://${VALKEY_HOME}/run/valkey.sock* ]]; then
-        searxng.remove.valkey
-    fi
-
+    searxng.remove.sites
     searxng.remove.uwsgi
-    drop_service_account "${SERVICE_USER}"
-    searxng.remove.settings
-    wait_key
+    searxng.remove.valkey
+    searxng.remove.redis
 
-    if service_is_available "${SEARXNG_URL}"; then
-        MSG="** Don't forget to remove your public site! (${SEARXNG_URL}) **" wait_key 10
+    if getent passwd "${SERVICE_USER}" >/dev/null; then
+        drop_service_account "${SERVICE_USER}"
+    else
+        info_msg "user ${SERVICE_USER} does not exist"
+    fi
+    searxng.remove.settings
+    searxng.remove.misc
+    searxng.remove.packages
+    searxng.remove.package_leftovers
+    searxng.remove.verify
+
+    if service_is_available "${SEARXNG_URL}" &>/dev/null; then
+        warn_msg "${SEARXNG_URL} still answers: another web server may proxy it, check its configuration"
+    fi
+    if ask_yn "Also delete this repository checkout (${REPO_ROOT})?"; then
+        searxng.remove.repo
     fi
 }
 
@@ -727,6 +782,13 @@ searxng.remove.settings() {
     rst_title "remove ${SEARXNG_SETTINGS_PATH}" section
     if ask_yn "Do you want to delete the SearXNG settings?" Yn; then
         rm -f "${SEARXNG_SETTINGS_PATH}"
+        local d
+        d="$(dirname "${SEARXNG_SETTINGS_PATH}")"
+        if [[ "$(basename "${d}")" == searxng ]]; then
+            rm -rf "${d}"
+        else
+            rmdir --ignore-fail-on-non-empty "${d}" 2>/dev/null
+        fi
     fi
 }
 
@@ -822,12 +884,6 @@ searxng.remove.uwsgi() {
     rst_title "Remove SearXNG's uWSGI app (${SEARXNG_UWSGI_APP})" section
     echo
     uWSGI_remove_app "${SEARXNG_UWSGI_APP}"
-}
-
-searxng.remove.redis() {
-    rst_title "SearXNG (remove redis)"
-    redis.rmgrp "${SERVICE_USER}"
-    redis.remove
 }
 
 searxng.install.valkey() {
@@ -1197,6 +1253,647 @@ EOF
         )
     done
 
+}
+
+# ==============================================================================
+# Helpers (patched): choices, package handling, web server activation, verify
+# Every removal of a package that is not exclusively SearXNG's is confirmed.
+# ==============================================================================
+
+# _ask_choice <prompt> <option>...   -> result in ${CHOICE}
+_ask_choice() {
+    local prompt="$1" i ans
+    shift
+    local opts=("$@")
+    while true; do
+        echo
+        echo -e "${prompt}"
+        for i in "${!opts[@]}"; do
+            echo "  $((i + 1))) ${opts[$i]}"
+        done
+        if ! read -r -p "Choose [1-${#opts[@]}] (default 1): " ans; then
+            # no terminal (EOF): take the last option, which is always 'none'
+            CHOICE="${opts[$((${#opts[@]} - 1))]}"
+            return 0
+        fi
+        ans="${ans:-1}"
+        if [[ ${ans} =~ ^[0-9]+$ ]] && ((ans >= 1 && ans <= ${#opts[@]})); then
+            CHOICE="${opts[$((ans - 1))]}"
+            return 0
+        fi
+        warn_msg "invalid choice: ${ans}"
+    done
+}
+
+_pkg_family() {
+    case "${DIST_ID}" in
+        ubuntu | debian | linuxmint) echo apt ;;
+        arch) echo pacman ;;
+        fedora) echo dnf ;;
+        *) if command -v apt-get >/dev/null 2>&1; then echo apt; else echo unknown; fi ;;
+    esac
+}
+
+_pkg_is_installed() {
+    case "$(_pkg_family)" in
+        apt) dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'install ok installed' ;;
+        pacman) pacman -Qi "$1" >/dev/null 2>&1 ;;
+        dnf) rpm -q "$1" >/dev/null 2>&1 ;;
+        *) return 1 ;;
+    esac
+}
+
+# print the installed packages out of the given list
+_pkg_filter_installed() {
+    local p
+    for p in "$@"; do
+        _pkg_is_installed "$p" && echo "$p"
+    done
+    return 0
+}
+
+# Show what a purge would remove besides the requested packages (apt only).
+# Returns 1 when OTHER packages would be removed too.
+# NOTE: 'apt-get -s purge' prints "Purg <pkg>" lines ("Remv" only for remove).
+_pkg_simulate() {
+    [[ "$(_pkg_family)" == apt ]] || return 0
+    local removed p extra=()
+    removed="$(apt-get -s purge "$@" 2>/dev/null | awk '/^(Remv|Purg) /{print $2}' | sed 's/:.*$//')"
+    for p in ${removed}; do
+        [[ " $* " == *" ${p} "* ]] || extra+=("${p}")
+    done
+    if ((${#extra[@]})); then
+        warn_msg "these OTHER packages depend on them and would be removed too:"
+        echo "    ${extra[*]}"
+        return 1
+    fi
+    info_msg "simulation: no other packages are affected"
+    return 0
+}
+
+_pkg_purge() {
+    case "$(_pkg_family)" in
+        apt) DEBIAN_FRONTEND=noninteractive apt-get purge -y "$@" ;;
+        pacman) pacman -Rns --noconfirm "$@" ;;
+        dnf) dnf remove -y "$@" ;;
+    esac
+}
+
+# searxng.remove.packages.group <title> <Yn|""> <warning> <pkg>...
+#   default answer is NO unless the second argument is 'Yn'
+searxng.remove.packages.group() {
+    local title="$1" default="$2" warning="$3" pkgs=()
+    shift 3
+    mapfile -t pkgs < <(_pkg_filter_installed "$@")
+    if ((${#pkgs[@]} == 0)); then
+        info_msg "${title}: none of these packages is installed"
+        return 0
+    fi
+    rst_title "${title}" section
+    rst_para "${warning}"
+    info_msg "installed: ${pkgs[*]}"
+    if ! _pkg_simulate "${pkgs[@]}"; then
+        local typed=""
+        read -r -p "Other software depends on these. Type 'yes' to purge anyway, anything else keeps them: " typed
+        if [[ ${typed} == yes ]]; then
+            _pkg_purge "${pkgs[@]}"
+            return 0
+        fi
+        info_msg "kept: ${pkgs[*]}"
+        return 1
+    fi
+    if ask_yn "Purge these packages?" ${default:+"${default}"}; then
+        _pkg_purge "${pkgs[@]}"
+        return 0
+    fi
+    info_msg "kept: ${pkgs[*]}"
+    return 1
+}
+
+_nginx_other_sites() {
+    local f
+    for f in /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*.conf; do
+        [[ -e ${f} ]] || continue
+        case "$(basename "${f}")" in
+            default | default.conf | searxng*) ;;
+            *) echo "${f}" ;;
+        esac
+    done
+}
+
+_uwsgi_other_apps() {
+    local f
+    for f in "${uWSGI_APPS_ENABLED}"/*.ini; do
+        [[ -e ${f} ]] || continue
+        [[ "$(basename "${f}")" == "${SEARXNG_UWSGI_APP}" ]] && continue
+        echo "${f}"
+    done
+}
+
+searxng.remove.packages() {
+    rst_title "Remove OS packages" section
+    rst_para "\
+The following packages may be used by other software on this host.  Each group
+is confirmed separately and the package manager is simulated first so you can
+see what else would be removed.  When in doubt answer 'no'."
+
+    if [[ "$(_pkg_family)" == unknown ]]; then
+        warn_msg "unsupported package manager: remove packages manually"
+        return 0
+    fi
+
+    local p all=() uw=() gen=() kv=() web=() others
+    mapfile -t all < <(echo ${SEARXNG_PACKAGES} | tr -s ' \n' '\n' | awk '!seen[$0]++')
+    for p in "${all[@]}"; do
+        case "${p}" in
+            uwsgi*) uw+=("${p}") ;;
+            git) ;; # never offered: needed to clone/update your fork
+            *) gen+=("${p}") ;;
+        esac
+    done
+
+    # uWSGI ------------------------------------------------------------------
+    others="$(_uwsgi_other_apps)"
+    uw+=(uwsgi-core uwsgi-emperor)
+    if [[ -n ${others} ]]; then
+        searxng.remove.packages.group "uWSGI" "" \
+            "uWSGI still runs OTHER apps (answer 'no'):
+${others}" "${uw[@]}"
+    else
+        searxng.remove.packages.group "uWSGI" Yn \
+            "No other uWSGI apps are enabled, uWSGI was installed for SearXNG." "${uw[@]}"
+    fi
+
+    # web servers ------------------------------------------------------------
+    others="$(_nginx_other_sites)"
+    case "$(_pkg_family)" in
+        apt) web=(nginx nginx-common nginx-core nginx-light nginx-full) ;;
+        *) web=(nginx) ;;
+    esac
+    searxng.remove.packages.group "nginx" "" \
+        "nginx is a general purpose web server.${others:+
+OTHER sites are configured, DO NOT remove it:
+${others}}" "${web[@]}"
+
+    case "$(_pkg_family)" in
+        apt) web=(apache2 apache2-bin apache2-data apache2-utils libapache2-mod-proxy-uwsgi) ;;
+        pacman) web=(apache) ;;
+        *) web=(httpd) ;;
+    esac
+    local other_apache=""
+    if [[ -d ${APACHE_SITES_ENABLED} ]]; then
+        other_apache="$(find "${APACHE_SITES_ENABLED}" -mindepth 1 ! -name '000-default.conf' ! -name 'searxng*' 2>/dev/null)"
+    fi
+    searxng.remove.packages.group "apache" "" \
+        "apache is a general purpose web server.${other_apache:+
+OTHER sites are configured, DO NOT remove it:
+${other_apache}}" "${web[@]}"
+
+    # generic build / runtime packages ---------------------------------------
+    searxng.remove.packages.group "generic python / build packages" "" \
+        "These are common development packages (git, compilers, python headers,
+-dev libraries) that many other programs and your desktop may need.
+SearXNG's installer pulled them in, but removing them is usually NOT wanted." \
+        "${gen[@]}"
+
+    # orphans (apt only) -----------------------------------------------------
+    if [[ "$(_pkg_family)" == apt ]]; then
+        local orphans
+        orphans="$(apt-get -s autoremove 2>/dev/null | awk '/^Remv /{print $2}' | tr '\n' ' ')"
+        if [[ -n ${orphans// /} ]]; then
+            rst_title "Unused dependencies" section
+            info_msg "apt reports these packages as no longer needed:"
+            echo "  ${orphans}"
+            if ask_yn "Run 'apt-get autoremove --purge' now?"; then
+                DEBIAN_FRONTEND=noninteractive apt-get autoremove --purge -y
+            fi
+        fi
+    fi
+}
+
+# install: git/curl/wget are required, install them if they are missing
+searxng.ensure_tools() {
+    local c missing=()
+    for c in git wget curl; do
+        command -v "${c}" >/dev/null 2>&1 || missing+=("${c}")
+    done
+    ((${#missing[@]})) || return 0
+    if [[ "$(id -u)" -ne 0 ]]; then
+        return 0 # required_commands reports it; installing needs root
+    fi
+    TITLE="SearXNG -- install missing tools (${missing[*]})" pkg_install "${missing[@]}"
+}
+
+searxng.remove.package_leftovers() {
+    rst_title "Clean package leftovers" section
+    if ! _pkg_is_installed uwsgi && ! _pkg_is_installed uwsgi-core; then
+        rm -rf /run/uwsgi
+        if [[ -f /etc/apparmor.d/uwsgi-core ]]; then
+            rm -f /etc/apparmor.d/uwsgi-core /var/cache/apparmor/*/uwsgi-core
+            info_msg "removed the apparmor profile left behind by uwsgi-core"
+        fi
+    fi
+    if [[ "$(_pkg_family)" == apt ]] && ask_yn "Clear the APT package cache (apt-get clean)?" Yn; then
+        apt-get clean
+    fi
+}
+
+# _searxng.remove.kv <valkey|redis> <script-home> <pkg>...
+#   1) a server built below <script-home> (older installers), 2) distribution
+#   packages (valkey.install in lib_valkey.sh uses apt: valkey-server)
+_searxng.remove.kv() {
+    local name="$1" home="$2" f u d found=0
+    shift 2
+    local units=("${name}" "${name}-server")
+    local unit_dirs=(/etc/systemd/system /lib/systemd/system /usr/lib/systemd/system)
+
+    if [[ -n ${home} ]]; then
+        [[ -d ${home} ]] && found=1
+        if ((found)); then
+            rst_title "Remove local ${name} server (${home})" section
+            if ask_yn "Remove the ${name} server installed in ${home}?" Yn; then
+                for u in "${units[@]}"; do systemctl disable --now "${u}.service" 2>/dev/null; done
+                for d in "${unit_dirs[@]}"; do
+                    for u in "${units[@]}"; do
+                        f="${d}/${u}.service"
+                        if [[ -f ${f} ]] && grep -q "${home}" "${f}" 2>/dev/null; then rm -f "${f}"; fi
+                    done
+                done
+                systemctl daemon-reload
+                rm -rf "${home}"
+                info_msg "removed ${home}"
+            fi
+        fi
+    fi
+
+    # distribution packages (confirmed, default NO: other software may use it)
+    if searxng.remove.packages.group "${name} (distribution packages)" "" \
+        "Other software (caches, queues, web apps ...) may use ${name}.
+Only remove it if it was installed for SearXNG." "$@"; then
+        for u in "${units[@]}"; do
+            systemctl disable --now "${u}.service" 2>/dev/null
+        done
+        systemctl daemon-reload
+        if getent passwd "${name}" >/dev/null && ask_yn "Also delete the system user '${name}'?"; then
+            userdel "${name}" 2>/dev/null
+            getent group "${name}" >/dev/null && groupdel "${name}" 2>/dev/null
+        fi
+    fi
+}
+
+searxng.remove.valkey() {
+    rst_title "SearXNG (remove valkey)"
+    _searxng.remove.kv valkey "${VALKEY_HOME:-}" valkey-server valkey-tools valkey
+
+    # valkey.backports (lib_valkey.sh) installs an extra APT source
+    local f
+    for f in /etc/apt/sources.list.d/debian-stable-backports.sources \
+        /etc/apt/sources.list.d/ubuntu-stable-backports.sources; do
+        if [[ -f ${f} ]]; then
+            warn_msg "found ${f} (added by the valkey installer when the package was not in your repos)"
+            if ask_yn "Remove this APT source and run 'apt update'?"; then
+                rm -f "${f}"
+                apt-get update >/dev/null 2>&1
+            fi
+        fi
+    done
+}
+
+searxng.remove.redis() {
+    rst_title "SearXNG (remove redis)"
+    _searxng.remove.kv redis "${REDIS_HOME:-}" redis-server redis-tools redis
+}
+
+searxng.remove.sites() {
+    rst_title "Remove web server sites" section
+
+    # nginx
+    searxng.remove.https
+    if nginx_is_installed; then
+        if [[ -e "${NGINX_APPS_AVAILABLE}/${NGINX_SEARXNG_SITE}" ||
+            -L "${NGINX_APPS_ENABLED}/${NGINX_SEARXNG_SITE}" ]]; then
+            nginx_remove_app "${NGINX_SEARXNG_SITE}"
+        fi
+    fi
+    rm -f "${NGINX_APPS_AVAILABLE}/${NGINX_SEARXNG_SITE}" \
+        "${NGINX_APPS_ENABLED}/${NGINX_SEARXNG_SITE}"
+    # lib.sh (nginx_include_apps_enabled) added 'include ${NGINX_APPS_ENABLED}/*.conf;'
+    # to the default server.  Undo that, but never on fedora/centos (stock directive)
+    # and never while other apps still use the folder.
+    local f
+    if [[ "$(_pkg_family)" != dnf ]] && ! compgen -G "${NGINX_APPS_ENABLED}/*.conf" >/dev/null; then
+        for f in "${NGINX_DEFAULT_SERVER}" /etc/nginx/sites-available/default /etc/nginx/conf.d/default.conf; do
+            [[ -f ${f} ]] || continue
+            if grep -q "include ${NGINX_APPS_ENABLED}/\*\.conf;" "${f}" &&
+                { [[ -f "${f}.bak" ]] || [[ -f "${f}.searxng.bak" ]] || grep -q 'added by searxng.sh' "${f}"; }; then
+                sed -i \
+                    -e "\|^[[:space:]]*include ${NGINX_APPS_ENABLED}/\*\.conf;|d" \
+                    -e '/# Load configuration files for the default server block\./d' \
+                    -e '/# added by searxng\.sh/d' "${f}"
+                rm -f "${f}.bak" "${f}.searxng.bak"
+                info_msg "removed include of ${NGINX_APPS_ENABLED} from ${f}"
+            fi
+        done
+    fi
+    if nginx_is_installed && nginx -t >/dev/null 2>&1; then
+        nginx_reload
+    fi
+
+    # apache
+    if apache_is_installed; then
+        if [[ -e "${APACHE_SITES_AVAILABLE}/${APACHE_SEARXNG_SITE}" ]]; then
+            apache_remove_site "${APACHE_SEARXNG_SITE}"
+        fi
+        if command -v a2dissite >/dev/null 2>&1; then
+            a2dissite "${APACHE_SEARXNG_SITE%.conf}" >/dev/null 2>&1
+        fi
+    fi
+    rm -f "${APACHE_SITES_AVAILABLE}/${APACHE_SEARXNG_SITE}" \
+        "${APACHE_SITES_ENABLED}/${APACHE_SEARXNG_SITE}"
+    if apache_is_installed; then
+        systemctl reload apache2 2>/dev/null || systemctl reload httpd 2>/dev/null
+    fi
+    return 0
+}
+
+searxng.remove.misc() {
+    rst_title "Remove remaining SearXNG files" section
+    local d re
+    # git safe.directory entries added by searxng.install.clone
+    for d in "${SEARXNG_SRC}" "${SERVICE_HOME}" "${SERVICE_HOME}/.git"; do
+        re="^$(printf '%s' "${d}" | sed 's/[][\.*^$/]/\\&/g')\$"
+        git config --system --unset-all safe.directory "${re}" 2>/dev/null
+    done
+    # uWSGI app files and logs (idempotent, in case the lib left something)
+    rm -f "${uWSGI_APPS_AVAILABLE}/${SEARXNG_UWSGI_APP}" \
+        "${uWSGI_APPS_ENABLED}/${SEARXNG_UWSGI_APP}"
+    rm -f /var/log/uwsgi/app/"${SERVICE_NAME}".log*
+    systemctl disable --now "uwsgi@${SERVICE_NAME}" 2>/dev/null
+    if [[ -d ${SERVICE_HOME} ]]; then
+        warn_msg "${SERVICE_HOME} still exists"
+        if ask_yn "Delete ${SERVICE_HOME}?" Yn; then
+            rm -rf "${SERVICE_HOME}"
+        fi
+    fi
+    if getent group "${SERVICE_GROUP}" >/dev/null; then
+        groupdel "${SERVICE_GROUP}" 2>/dev/null
+    fi
+}
+
+# Delete the repository checkout (ask first, warn about unsaved work)
+searxng.remove.repo() {
+    rst_title "Remove repository checkout" section
+    local repo="${REPO_ROOT}" dirty unpushed
+    case "${repo}" in
+        "" | / | /usr | /usr/local | /home | /etc | /root | "${HOME}")
+            err_msg "refusing to delete '${repo}'"
+            return 1
+            ;;
+    esac
+    dirty="$(git -c safe.directory='*' -C "${repo}" status --porcelain 2>/dev/null)"
+    unpushed="$(git -c safe.directory='*' -C "${repo}" log --oneline '@{u}..' 2>/dev/null)"
+    if [[ -n ${dirty} ]]; then
+        warn_msg "UNCOMMITTED changes would be lost (this includes a patched searxng.sh):"
+        echo "${dirty}" | head -n 15
+    fi
+    if [[ -n ${unpushed} ]]; then
+        warn_msg "UNPUSHED commits would be lost:"
+        echo "${unpushed}" | head -n 15
+    fi
+    if ask_yn "Delete ${repo} (you can re-clone your fork afterwards)?"; then
+        cd / || true
+        rm -rf "${repo}"
+        info_msg "deleted ${repo}"
+        exit 0
+    fi
+}
+
+# Look for anything that is left behind
+searxng.remove.verify() {
+    rst_title "Verify: look for leftovers" section
+    local out left=0 u
+
+    local prune=(-path /proc -o -path /sys -o -path /dev -o -path /mnt -o -path /media -o -path /snap
+        -o -path /var/lib/docker -o -path /var/lib/containerd -o -path /var/lib/snapd
+        -o -path '*/.local/share/Trash' -o -name node_modules -o -path /usr/share/icons)
+    local sysdirs=(/etc /usr /opt /var /run /lib /bin /sbin /srv /root)
+    local sysout homeout
+    # searxng / uwsgi / valkey anywhere, redis only in system locations
+    out="$(find / \( "${prune[@]}" \) -prune -o \
+        \( -iname '*searx*' -o -iname '*valkey*' -o -iname '*uwsgi*' \) \
+        -not -path "${REPO_ROOT}" -not -path "${REPO_ROOT}/*" \
+        -not -path '*/dist-packages/*' -not -path '*/site-packages/*' -not -name '*.svg' \
+        -print 2>/dev/null)"
+    out+=$'\n'"$(find "${sysdirs[@]}" \( "${prune[@]}" \) -prune -o \
+        \( -name redis -o -name 'redis-*' -o -name 'redis.*' -o -name 'redis_*' \) \
+        -not -path '*/dist-packages/*' -not -path '*/site-packages/*' -not -name '*.svg' \
+        -not -path '/usr/share/*' -print 2>/dev/null)"
+    sysout="$(echo "${out}" | grep -v '^$' | grep -v '^/home/' | grep -v '^/var/cache/apt/archives/')"
+    homeout="$(echo "${out}" | grep '^/home/')"
+    if [[ -n ${sysout} ]]; then
+        warn_msg "system files / directories still present:"
+        echo "${sysout}" | sed 's/^/    /'
+        left=1
+    else
+        info_msg "system files: nothing found"
+    fi
+    if [[ -n ${homeout} ]]; then
+        info_msg "in home directories (your own files, not counted as leftovers):"
+        echo "${homeout}" | head -n 20 | sed 's/^/    /'
+    fi
+
+    for u in searxng valkey redis; do
+        if getent passwd "${u}" >/dev/null; then warn_msg "user still exists: ${u}"; left=1; fi
+        if getent group "${u}" >/dev/null; then warn_msg "group still exists: ${u}"; left=1; fi
+    done
+
+    case "$(_pkg_family)" in
+        apt) out="$(dpkg -l 2>/dev/null | awk '/^ii/ && $2 ~ /uwsgi|valkey|redis|searx|^nginx|^apache2/ {print $2}')" ;;
+        pacman) out="$(pacman -Qq 2>/dev/null | grep -E 'uwsgi|valkey|redis|searx|nginx|apache')" ;;
+        dnf) out="$(rpm -qa 2>/dev/null | grep -E 'uwsgi|valkey|redis|searx|nginx|httpd')" ;;
+        *) out="" ;;
+    esac
+    if [[ -n ${out} ]]; then
+        warn_msg "packages still installed (fine if you chose to keep them):"
+        echo "${out}" | sed 's/^/    /'
+    else
+        info_msg "packages: none of uwsgi / valkey / redis / nginx / apache installed"
+    fi
+
+    out="$(systemctl list-units --all --no-legend 2>/dev/null | grep -Ei 'uwsgi|valkey|redis|searx' | awk '{print $1}')"
+    if [[ -n ${out} ]]; then
+        warn_msg "systemd units still known:"
+        echo "${out}" | sed 's/^/    /'
+        left=1
+    else
+        info_msg "systemd: no uwsgi / valkey / redis / searxng units"
+    fi
+
+    out="$({ pgrep -a -x uwsgi; pgrep -a -x valkey-server; pgrep -a -x redis-server; pgrep -a -f 'searx\.webapp'; } 2>/dev/null)"
+    if [[ -n ${out} ]]; then
+        warn_msg "processes still running:"
+        echo "${out}" | sed 's/^/    /'
+        left=1
+    else
+        info_msg "processes: none running"
+    fi
+
+    out="$(ss -ltnpH 2>/dev/null | grep -E ':(8888|6379)\b')"
+    if [[ -n ${out} ]]; then
+        warn_msg "ports 8888 / 6379 still listening:"
+        echo "${out}" | sed 's/^/    /'
+        left=1
+    else
+        info_msg "ports 8888 / 6379: not listening"
+    fi
+
+    out="$(grep -rIl -i searxng /etc 2>/dev/null | grep -v -- '-$')"
+    if [[ -n ${out} ]]; then
+        warn_msg "/etc files still mentioning searxng:"
+        echo "${out}" | sed 's/^/    /'
+        left=1
+    else
+        info_msg "/etc: no file mentions searxng"
+    fi
+
+    if ((left)); then
+        warn_msg "leftovers found (see above)"
+    else
+        info_msg "CLEAN: no SearXNG leftovers found"
+    fi
+}
+
+# ==============================================================================
+# Web server activation (install flow)
+# ==============================================================================
+
+# HTTP check against the local web server (does not depend on DNS).
+# Any answer proves nginx/apache reached uWSGI: SearXNG's bot limiter answers
+# curl with 429, which is fine.  Only 000 (no connection), 404 (site not
+# routed) and 502/503/504 (uWSGI unreachable) count as failure.
+#   usage: searxng.http.check [http|https] [host]      -> sets SEARXNG_HTTP_CODE
+searxng.http.check() {
+    local scheme="${1:-http}" host="${2:-$(uname -n)}"
+    local path="${SEARXNG_URL_PATH%/}/" i code=000
+    for i in 1 2 3 4 5 6; do
+        code="$(curl -ks --max-time 8 -o /dev/null -w '%{http_code}' \
+            -A 'Mozilla/5.0 (X11; Linux x86_64)' -H "Host: ${host}" \
+            "${scheme}://127.0.0.1${path}")"
+        case "${code}" in
+            000 | 404 | 502 | 503 | 504) ;;
+            *)
+                SEARXNG_HTTP_CODE="${code}"
+                return 0
+                ;;
+        esac
+        sleep 2
+    done
+    SEARXNG_HTTP_CODE="${code}"
+    return 1
+}
+
+_uwsgi_enable() {
+    case "${DIST_ID}" in
+        arch) systemctl enable --now "uwsgi@${SERVICE_NAME}" 2>/dev/null ;;
+        *) systemctl enable --now uwsgi 2>/dev/null ;;
+    esac
+}
+
+# make sure nginx includes ${NGINX_APPS_ENABLED}/*.conf inside a server block
+_nginx_ensure_apps_include() {
+    if nginx -T 2>/dev/null | grep -q "${NGINX_APPS_ENABLED}/${NGINX_SEARXNG_SITE}"; then
+        info_msg "nginx loads ${NGINX_APPS_ENABLED}"
+        return 0
+    fi
+    warn_msg "nginx does not load ${NGINX_APPS_ENABLED}: adding an include to the default server"
+    local f target=""
+    for f in /etc/nginx/sites-available/default /etc/nginx/conf.d/default.conf /etc/nginx/nginx.conf; do
+        if [[ -f ${f} ]] && grep -Eq '^[[:space:]]*server_name' "${f}"; then
+            target="${f}"
+            break
+        fi
+    done
+    if [[ -z ${target} ]]; then
+        err_msg "no default nginx server block found: add 'include ${NGINX_APPS_ENABLED}/*.conf;' manually"
+        return 1
+    fi
+    [[ -f "${target}.searxng.bak" ]] || cp -a "${target}" "${target}.searxng.bak"
+    awk -v inc="    include ${NGINX_APPS_ENABLED}/*.conf;" '
+        { print }
+        !done && $0 ~ /^[ \t]*server_name/ { print "    # added by searxng.sh"; print inc; done = 1 }
+    ' "${target}.searxng.bak" >"${target}"
+    if ! nginx -t >/dev/null 2>&1; then
+        err_msg "nginx -t failed after patching ${target}: restoring backup"
+        cp -a "${target}.searxng.bak" "${target}"
+        return 1
+    fi
+    info_msg "patched ${target} (backup: ${target}.searxng.bak, restored by 'remove')"
+}
+
+searxng.nginx.activate() {
+    rst_title "Activate nginx site" section
+    local site="${NGINX_APPS_AVAILABLE}/${NGINX_SEARXNG_SITE}"
+    [[ -f ${site} ]] || die 42 "missing ${site}: nginx site was not installed"
+    mkdir -p "${NGINX_APPS_ENABLED}"
+    if [[ ! -e "${NGINX_APPS_ENABLED}/${NGINX_SEARXNG_SITE}" ]]; then
+        ln -s "${site}" "${NGINX_APPS_ENABLED}/${NGINX_SEARXNG_SITE}"
+    fi
+    _nginx_ensure_apps_include
+    if ! nginx -t; then
+        die 42 "nginx configuration test failed"
+    fi
+    systemctl enable nginx >/dev/null 2>&1
+    systemctl restart nginx || err_msg "nginx failed to start: is port 80 already in use?"
+    _uwsgi_enable
+    searxng.http.check.report nginx
+}
+
+searxng.apache.activate() {
+    rst_title "Activate apache site" section
+    local svc=apache2
+    systemctl list-unit-files 2>/dev/null | grep -q '^apache2.service' || svc=httpd
+    if command -v a2enmod >/dev/null 2>&1; then
+        a2enmod proxy proxy_uwsgi proxy_http >/dev/null 2>&1
+        a2ensite "${APACHE_SEARXNG_SITE%.conf}" >/dev/null 2>&1
+    fi
+    if command -v apachectl >/dev/null 2>&1 && ! apachectl configtest; then
+        die 42 "apache configuration test failed"
+    fi
+    systemctl enable "${svc}" >/dev/null 2>&1
+    systemctl restart "${svc}" || err_msg "${svc} failed to start: is port 80 already in use?"
+    _uwsgi_enable
+    searxng.http.check.report "${svc}"
+}
+
+searxng.http.check.report() {
+    local svc="$1"
+    if searxng.http.check http; then
+        info_msg "SearXNG answers at ${SEARXNG_URL} (HTTP ${SEARXNG_HTTP_CODE}, via ${svc}) [OK]"
+        [[ ${SEARXNG_HTTP_CODE} == 429 ]] &&
+            info_msg "429 is SearXNG's bot limiter rejecting curl: a browser gets the page"
+        return 0
+    fi
+    err_msg "no usable answer from http://127.0.0.1${SEARXNG_URL_PATH%/}/ (HTTP ${SEARXNG_HTTP_CODE})"
+    systemctl --no-pager -l status "${svc}" 2>&1 | tail -n 8
+    info_msg "last log lines (may include older entries):"
+    tail -n 5 /var/log/nginx/error.log 2>/dev/null
+    tail -n 5 /var/log/uwsgi/app/"${SERVICE_NAME}".log 2>/dev/null
+    return 1
+}
+
+searxng.install.summary() {
+    rst_title "Summary" section
+    local s
+    for s in uwsgi nginx apache2 httpd valkey valkey-server redis-server; do
+        if systemctl list-unit-files 2>/dev/null | grep -q "^${s}.service"; then
+            printf '  %-14s active: %-9s enabled at boot: %s\n' "${s}" \
+                "$(systemctl is-active "${s}" 2>/dev/null)" "$(systemctl is-enabled "${s}" 2>/dev/null)"
+        fi
+    done
+    echo
+    echo "  settings : ${SEARXNG_SETTINGS_PATH}"
+    echo "  URL      : ${SEARXNG_URL}"
+    echo "  remove   : sudo -H ${REPO_ROOT}/utils/searxng.sh remove all"
 }
 
 # ----------------------------------------------------------------------------
