@@ -43,6 +43,12 @@ To fine-tune SearXNG, see `Configuration guide`_.
 
 Further information on *how-to* can be found `here <https://docs.searxng.org/admin/index.html>`_.
 
+
+sudo -H ./utils/searxng.sh remove all
+
+sudo -H ./utils/searxng.sh install all
+
+
 Connect
 =======
 
