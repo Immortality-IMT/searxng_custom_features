@@ -117,6 +117,7 @@ from searx import favicons
 from searx.valkeydb import initialize as valkey_initialize
 from searx.sxng_locales import sxng_locales
 import searx.search
+from searx.search import collector  # step 1: result collector
 from searx.network import stream as http_stream
 
 logger = logger.getChild('webapp')
@@ -669,12 +670,23 @@ def search():
     search_query = None
     raw_text_query = None
     result_container = None
+    served_from_cache = False
     try:
         search_query, raw_text_query, _, _, selected_locale = get_search_query_from_webapp(
             sxng_request.preferences, sxng_request.form
         )
         search_obj = searx.search.SearchWithPlugins(search_query, sxng_request, sxng_request.user_plugins)
-        result_container = search_obj.search()
+
+        # step 2: serve the newest stored page if there is one, refresh it in the background
+        result_container = collector.lookup(search_query)
+        served_from_cache = result_container is not None
+        if served_from_cache:
+            collector.refresh_async(
+                search_query,
+                lambda q: searx.search.SearchWithPlugins(q, sxng_request, sxng_request.user_plugins),
+            )
+        else:
+            result_container = search_obj.search()
 
     except SearxParameterException as e:
         logger.exception('search error: SearxParameterException')
@@ -686,6 +698,10 @@ def search():
     # 1. check if the result is a redirect for an external bang
     if result_container.redirect_url:
         return redirect(result_container.redirect_url)
+
+    # step 1/2: store live results (cached pages are not stored again)
+    if not served_from_cache:
+        collector.record(search_query, result_container)
 
     # 2. add Server-Timing header for measuring performance characteristics of
     # web applications
