@@ -142,6 +142,7 @@ class InfoPageSet:  # pylint: disable=too-few-public-methods
             'search-syntax',
             'about',
             'donate',
+            'privacy',
         ]
         """list of articles in the online documentation"""
 
